@@ -1,0 +1,90 @@
+version: '3.8'
+
+# ==============================================================================
+# Computer Networks Mini-Project: Secure 3-Tier Web Application
+# Architecture:
+#   Tier 1 (Web): Nginx Reverse Proxy (Port 80) -> Handles client traffic & security headers
+#   Tier 2 (App): Flask Server (Port 5000) -> Business logic, Auth & RBAC
+#   Tier 3 (DB):  MySQL 8.0 (Port 3306) -> Encapsulated in isolated internal network
+#
+# Network Security Enforcement:
+#   - web: Connected to public_net & app_net
+#   - app: Connected to app_net & db_net
+#   - db:  Connected ONLY to db_net (internal: true, no exposed host ports)
+#   Direct client-to-database communication is physically impossible.
+# ==============================================================================
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: cn_web_tier
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8080:80"
+    networks:
+      - public_net
+      - app_net
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cn_app_tier
+    restart: unless-stopped
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=flask_app
+      - MYSQL_PASSWORD=flask_secure_pass_443
+      - MYSQL_DATABASE=student_portal
+      - PORT=5000
+      - SECRET_KEY=cn-secure-three-tier-secret-key-2026
+      - DOCKER_ENV=1
+    networks:
+      - app_net
+      - db_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: cn_db_tier
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_super_secure_999
+      - MYSQL_DATABASE=student_portal
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - db_net
+    # Note: Port 3306 is NOT mapped to the host to enforce zero client direct access
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_super_secure_999"]
+      interval: 4s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+
+networks:
+  public_net:
+    driver: bridge
+    name: cn_public_net
+  app_net:
+    driver: bridge
+    name: cn_app_net
+  db_net:
+    driver: bridge
+    name: cn_db_net
+    internal: true # Enforce database subnet isolation: No external ingress or egress
+
+volumes:
+  mysql_data:
+    name: cn_mysql_data

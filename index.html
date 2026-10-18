@@ -19,14 +19,199 @@
         <span>Network <b>Workbench</b></span>
       </a>
       <nav class="nav-list" aria-label="Main navigation">
+        <a href="#portal" class="nav-item" data-section="portal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Student Portal (Live 3-Tier)</a>
         <a href="#overview" class="nav-item active" data-section="overview"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="6" height="6" rx="1"/><rect x="15" y="14" width="6" height="6" rx="1"/><path d="M6 10v7h9M9 7h9v7"/></svg>Overview</a>
         <a href="#simulate" class="nav-item" data-section="simulate"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>Simulate</a>
         <a href="#rules" class="nav-item" data-section="rules"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>Rules</a>
         <a href="#learn" class="nav-item" data-section="learn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 3 4v14c3-1 6-1 9 2 3-3 6-3 9-2V4c-2-1-6-1-9 1Z"/></svg>Learn</a>
       </nav>
+      <div class="portal-topbar-user">
+        <span id="userRoleBadge" class="role-badge role-guest">GUEST</span>
+        <span id="currentUserName" style="font-size:12px; font-weight:500;">Guest User</span>
+        <button id="openLoginModalBtn" class="secondary-button" type="button" style="min-height:36px; padding:6px 14px; font-size:12px;">Sign in</button>
+        <button id="logoutBtn" class="secondary-button" type="button" style="min-height:36px; padding:6px 14px; font-size:12px;" hidden>Sign out</button>
+      </div>
     </header>
 
     <main id="main-content" class="content" tabindex="-1">
+      <div id="portalNotification" class="portal-notification" hidden></div>
+
+      <!-- LIVE 3-TIER STUDENT APPLICATION & ARCHITECTURE VERIFICATION -->
+      <section id="portal" class="page-section" aria-labelledby="portalTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">LIVE 3-TIER PRODUCTION SYSTEM</p>
+            <h1 id="portalTitle">Student Information <em>Portal</em></h1>
+            <p>A real-world three-tier web application running Nginx (Web Tier), Flask (Application Tier), and MySQL (Database Tier), enforcing strict network segmentation and least privilege.</p>
+          </div>
+          <div class="helper-text">
+            <span>Client ➔ Web :80/443 ➔ App :5000 ➔ DB :3306</span>
+          </div>
+        </div>
+
+        <!-- 3-Tier Health & Isolation Status -->
+        <div class="tier-status-grid">
+          <div class="tier-status-card">
+            <div class="tier-card-head">
+              <h3>01 / Web Tier (Nginx)</h3>
+              <span id="webTierStatus" class="status-pill status-active">ONLINE</span>
+            </div>
+            <p class="tier-card-role">Accepts incoming HTTP/HTTPS requests from clients, injects security headers, and reverse proxies <code>/api/</code> to Flask.</p>
+            <span class="tier-card-tech">Port 80/443 · Public Ingress</span>
+          </div>
+          <div class="tier-status-card">
+            <div class="tier-card-head">
+              <h3>02 / App Tier (Flask)</h3>
+              <span id="appTierStatus" class="status-pill status-active">ONLINE</span>
+            </div>
+            <p class="tier-card-role">Enforces authentication, role-based access control (Admin vs Student), input validation, and business logic.</p>
+            <span class="tier-card-tech">Port 5000 · Internal Bridge</span>
+          </div>
+          <div class="tier-status-card">
+            <div class="tier-card-head">
+              <h3>03 / Data Tier (MySQL)</h3>
+              <span id="dbTierStatus" class="status-pill status-active">ONLINE</span>
+            </div>
+            <p class="tier-card-role">Stores relational student records, user credentials, and security audit logs. Strictly isolated from client access.</p>
+            <span id="dbTierDialect" class="tier-card-tech">MySQL 8.0 :3306 · Private Subnet</span>
+          </div>
+        </div>
+
+        <!-- Real-Time 3-Tier Packet Inspector -->
+        <div class="live-inspector-card">
+          <div class="live-inspector-head">
+            <div>
+              <h2>Live 3-Tier Packet Inspector</h2>
+              <p class="helper-text">Monitors live packets as they traverse the three network tiers in real time.</p>
+            </div>
+            <span id="liveTraceBadge" class="decision-badge allow">IDLE</span>
+          </div>
+          <div id="liveTracePath" class="live-trace-path">
+            <span class="hop">Client (192.168.1.20)</span> ➔ <span class="hop">Web:443</span> ➔ <span class="hop">App:5000</span> ➔ <span class="hop">DB:3306</span>
+          </div>
+          <div id="liveTraceOutput" class="live-trace-stream">
+            <div class="trace-entry">
+              <div class="trace-entry-head">
+                <span class="trace-timestamp">[System Ready]</span>
+                <strong>Network Monitor Initialized</strong>
+                <span class="status-pill status-allow">READY</span>
+              </div>
+              <div class="trace-entry-body">
+                <small>Ready to capture and inspect live cross-tier traffic.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Attack & Boundary Penetration Demo -->
+        <div class="security-demo-box">
+          <div class="security-demo-head">
+            <div>
+              <h2>Network Security & Boundary Penetration Test</h2>
+              <p class="helper-text">Verify that Docker network segmentation and firewall policy block direct client access to the private database tier.</p>
+            </div>
+          </div>
+          <p>In our architecture, the MySQL container is attached <strong>exclusively to the private <code>db_net</code> network</strong> with zero mapped host ports. Test what happens when an attacker tries to connect directly to <code>10.0.3.10:3306</code> vs sending a legitimate request via the 3-tier chain.</p>
+          <div class="security-demo-actions">
+            <button id="btnTestDirectDb" class="btn-danger" type="button">
+              <svg class="icon" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m9 12 6 0"/></svg>
+              Simulate Attacker: Attempt Direct Client ➔ DB Connection (:3306)
+            </button>
+            <button id="btnTestLegitimateRoute" class="primary-button" type="button">
+              <svg class="icon" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+              Verify Legitimate 3-Tier Route (Client ➔ Web ➔ App ➔ DB)
+            </button>
+          </div>
+          <div id="securityTestResult" hidden></div>
+        </div>
+
+        <!-- Academic Summary Metrics -->
+        <div class="stats-cards-grid">
+          <div class="stat-card">
+            <div id="metricTotalStudents" class="stat-val">10</div>
+            <div class="stat-lbl">Total Students</div>
+          </div>
+          <div class="stat-card">
+            <div id="metricActiveStudents" class="stat-val">10</div>
+            <div class="stat-lbl">Active Enrolled</div>
+          </div>
+          <div class="stat-card">
+            <div id="metricAvgGpa" class="stat-val">3.93</div>
+            <div class="stat-lbl">Average GPA</div>
+          </div>
+          <div class="stat-card">
+            <div id="metricAvgAttendance" class="stat-val">96.5%</div>
+            <div class="stat-lbl">Avg Attendance</div>
+          </div>
+        </div>
+
+        <!-- Student Records Directory -->
+        <div class="section-header">
+          <div>
+            <h2>Student Directory</h2>
+            <p class="helper-text">Records retrieved from Database Tier via Application Tier REST API.</p>
+          </div>
+          <button id="openAddStudentModal" class="primary-button" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Add Student
+          </button>
+        </div>
+
+        <div class="portal-controls-bar">
+          <div class="portal-filters">
+            <input id="studentSearchInput" class="portal-search" type="search" placeholder="Search by name, roll number, email...">
+            <select id="deptFilterSelect" class="portal-select">
+              <option value="All">All Departments</option>
+              <option value="Computer Science">Computer Science</option>
+              <option value="Information Security">Information Security</option>
+              <option value="Computer Networks">Computer Networks</option>
+              <option value="Software Engineering">Software Engineering</option>
+              <option value="Operating Systems">Operating Systems</option>
+            </select>
+            <select id="statusFilterSelect" class="portal-select">
+              <option value="All">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Graduated">Graduated</option>
+              <option value="On Leave">On Leave</option>
+              <option value="Suspended">Suspended</option>
+            </select>
+          </div>
+          <span id="studentsCountBadge" class="status-pill status-active">Loading...</span>
+        </div>
+
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Student Name & Email</th>
+                <th>Department</th>
+                <th>Academic Level</th>
+                <th>GPA</th>
+                <th>Attendance</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              <tr><td colspan="8" class="text-center">Loading student records from Database Tier...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Real-Time Audit Logs -->
+        <div class="audit-logs-wrap">
+          <div class="audit-logs-head">
+            <div>
+              <h2>Live Network & Firewall Audit Logs</h2>
+              <p class="helper-text">Stored in Database Tier (<code>network_audit_logs</code> table) recording every cross-tier transit.</p>
+            </div>
+            <button id="refreshAuditBtn" class="secondary-button" type="button" style="min-height:36px; padding:6px 14px; font-size:12px;">Refresh Logs</button>
+          </div>
+          <div id="auditLogsList">Loading audit logs...</div>
+        </div>
+      </section>
+
       <section id="overview" class="page-section active-section" aria-labelledby="overviewTitle">
         <div class="section-intro overview-intro">
           <div class="hero-copy"><p class="eyebrow">SECURE THREE-TIER ARCHITECTURE</p><h1 id="overviewTitle">A network you can <em>reason about.</em></h1><p class="project-description">An interactive browser-based simulation of a secure three-tier network architecture that models packet flow and firewall access-control decisions.</p><p>Follow the request. Inspect the boundaries. Discover why a firewall lets one packet through and stops another.</p><a class="primary-button" href="#simulate">Send a test packet<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
@@ -127,6 +312,231 @@
       <footer><span>Network Workbench <span class="footer-divider">/</span> Secure 3-Tier Simulator</span><span>Built for learning. All packets stay in your browser.</span></footer>
     </main>
   </div>
+
+  <!-- MODAL: LOGIN -->
+  <div id="loginModal" class="modal-overlay" role="dialog" aria-labelledby="loginModalTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="loginModalTitle">Sign in to Student Portal</h2>
+        <button class="btn-icon" data-close-modal="loginModal" aria-label="Close dialog"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <form id="loginForm">
+        <div class="modal-body">
+          <div id="loginModalAlert" style="display:none; margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; font-size: 13px;"></div>
+          <div class="form-field">
+            <label for="loginUsername">Username</label>
+            <input id="loginUsername" type="text" placeholder="e.g. admin or student" required autocomplete="username">
+          </div>
+          <div class="form-field">
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <div class="demo-preset-logins">
+            <p>Demo Accounts (Click to Auto-Fill & Sign In):</p>
+            <div class="preset-buttons">
+              <button id="btnQuickLoginAdmin" class="preset-btn" type="button">🔑 Admin: admin / Admin@123</button>
+              <button id="btnQuickLoginStudent" class="preset-btn" type="button">👤 Student: student / Student@123</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="secondary-button" type="button" data-close-modal="loginModal">Cancel</button>
+          <button id="loginSubmitBtn" class="primary-button" type="submit">Sign in</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD STUDENT (ADMIN ONLY) -->
+  <div id="addStudentModal" class="modal-overlay" role="dialog" aria-labelledby="addStudentModalTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="addStudentModalTitle">Add New Student Record</h2>
+        <button class="btn-icon" data-close-modal="addStudentModal" aria-label="Close dialog"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <form id="addStudentForm">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-field">
+              <label for="newRollNumber">Roll Number</label>
+              <input id="newRollNumber" type="text" placeholder="e.g. CS2024-011" required>
+            </div>
+            <div class="form-field">
+              <label for="newName">Full Name</label>
+              <input id="newName" type="text" placeholder="e.g. Alan Kay" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="newEmail">University Email</label>
+              <input id="newEmail" type="email" placeholder="e.g. alan.kay@university.edu" required>
+            </div>
+            <div class="form-field">
+              <label for="newDepartment">Department</label>
+              <select id="newDepartment" required>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Information Security">Information Security</option>
+                <option value="Computer Networks">Computer Networks</option>
+                <option value="Software Engineering">Software Engineering</option>
+                <option value="Operating Systems">Operating Systems</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="newYear">Academic Year</label>
+              <input id="newYear" type="number" min="1" max="4" value="1" required>
+            </div>
+            <div class="form-field">
+              <label for="newSemester">Semester</label>
+              <input id="newSemester" type="number" min="1" max="8" value="1" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="newGpa">Cumulative GPA (0.00 - 4.00)</label>
+              <input id="newGpa" type="number" step="0.01" min="0" max="4" value="3.75" required>
+            </div>
+            <div class="form-field">
+              <label for="newAttendance">Attendance % (0 - 100)</label>
+              <input id="newAttendance" type="number" step="0.1" min="0" max="100" value="95.0" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="newStatus">Enrollment Status</label>
+              <select id="newStatus">
+                <option value="Active">Active</option>
+                <option value="Graduated">Graduated</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="newPhone">Contact Phone</label>
+              <input id="newPhone" type="tel" placeholder="+1-555-0199">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="secondary-button" type="button" data-close-modal="addStudentModal">Cancel</button>
+          <button class="primary-button" type="submit">Create Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT STUDENT (ADMIN ONLY) -->
+  <div id="editStudentModal" class="modal-overlay" role="dialog" aria-labelledby="editStudentModalTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="editStudentModalTitle">Edit Student Information</h2>
+        <button class="btn-icon" data-close-modal="editStudentModal" aria-label="Close dialog"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <form id="editStudentForm">
+        <input id="editStudentId" type="hidden">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-field">
+              <label for="editRollNumber">Roll Number (Immutable)</label>
+              <input id="editRollNumber" type="text" readonly style="background:var(--soft);">
+            </div>
+            <div class="form-field">
+              <label for="editName">Full Name</label>
+              <input id="editName" type="text" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="editEmail">University Email</label>
+              <input id="editEmail" type="email" required>
+            </div>
+            <div class="form-field">
+              <label for="editDepartment">Department</label>
+              <select id="editDepartment" required>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Information Security">Information Security</option>
+                <option value="Computer Networks">Computer Networks</option>
+                <option value="Software Engineering">Software Engineering</option>
+                <option value="Operating Systems">Operating Systems</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="editYear">Academic Year</label>
+              <input id="editYear" type="number" min="1" max="4" required>
+            </div>
+            <div class="form-field">
+              <label for="editSemester">Semester</label>
+              <input id="editSemester" type="number" min="1" max="8" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="editGpa">Cumulative GPA</label>
+              <input id="editGpa" type="number" step="0.01" min="0" max="4" required>
+            </div>
+            <div class="form-field">
+              <label for="editAttendance">Attendance %</label>
+              <input id="editAttendance" type="number" step="0.1" min="0" max="100" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="editStatus">Enrollment Status</label>
+              <select id="editStatus">
+                <option value="Active">Active</option>
+                <option value="Graduated">Graduated</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="editPhone">Contact Phone</label>
+              <input id="editPhone" type="tel">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="secondary-button" type="button" data-close-modal="editStudentModal">Cancel</button>
+          <button class="primary-button" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW STUDENT ACADEMIC PROFILE -->
+  <div id="viewStudentModal" class="modal-overlay" role="dialog" aria-labelledby="viewStudentModalTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="viewStudentModalTitle">Student Academic Record</h2>
+        <button class="btn-icon" data-close-modal="viewStudentModal" aria-label="Close dialog"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-details-grid">
+          <div class="profile-item"><label>Roll Number</label><span id="profileRoll" class="mono-code">CS2024-001</span></div>
+          <div class="profile-item"><label>Full Name</label><span id="profileName">Ada Lovelace</span></div>
+          <div class="profile-item"><label>Email</label><span id="profileEmail">ada@university.edu</span></div>
+          <div class="profile-item"><label>Department</label><span id="profileDept">Computer Science</span></div>
+          <div class="profile-item"><label>Academic Standing</label><span id="profileYearSem">Year 3, Semester 5</span></div>
+          <div class="profile-item"><label>Status</label><span id="profileStatus" class="status-pill status-active">Active</span></div>
+          <div class="profile-item"><label>GPA</label><span id="profileGpa" class="score-badge gpa">3.98</span></div>
+          <div class="profile-item"><label>Attendance</label><span id="profileAttendance" class="score-badge att">98.5%</span></div>
+          <div class="profile-item"><label>Contact</label><span id="profilePhone">+1-555-0101</span></div>
+        </div>
+        <div>
+          <h3>Enrolled Courses & Academic Evaluation</h3>
+          <div id="profileCoursesList" class="courses-container"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary-button" type="button" data-close-modal="viewStudentModal">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js?v=4.1"></script>
+  <script src="portal.js"></script>
 </body>
 </html>
