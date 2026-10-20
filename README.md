@@ -30,6 +30,16 @@ python lab.py verify
 
 ---
 
+## 🖥️ The 3 User Interfaces of Network Workbench v2
+
+| Interface | Type | How to Open & What It Does |
+| :--- | :--- | :--- |
+| **Network Workbench Dashboard** | Graphical Web Page | Run `python -m http.server 8000`, then open `http://localhost:8000` in your browser. Features dynamic SVG topology, Mode A/B/Custom architecture switch, Evidence tab, pure-SVG latency comparison charts, Nmap scan tabs, packet dissections, and guided syllabus lessons. |
+| **ShopLedger Web App (Mode B)** | Graphical Web Page | Open `https://127.0.0.1:8443` in your browser (click through self-signed certificate warning). Served by Nginx TLS 1.3 reverse proxy through the client ingress relay crossing the firewall to FastAPI and MySQL. |
+| **ShopLedger Client (Mode A)** | Terminal TUI | Run `python lab.py client-ui`. Interactive text-based terminal UI drawn directly in your terminal with menus, searchable product catalog, real-time stock levels, and direct MySQL transactions. |
+
+---
+
 ## 🧭 Project Architecture at a Glance
 
 ```

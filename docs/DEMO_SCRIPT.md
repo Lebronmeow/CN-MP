@@ -2,6 +2,11 @@
 
 This script provides an exact 5-minute walkthrough to demonstrate Network Workbench v2 to examiners or instructors.
 
+### The 3 User Interfaces:
+1. **Network Workbench Dashboard:** `http://localhost:8000` (run `python -m http.server 8000`).
+2. **ShopLedger Web App (Mode B):** `https://127.0.0.1:8443` in browser.
+3. **ShopLedger Client (Mode A):** Terminal TUI via `python lab.py client-ui`.
+
 ---
 
 ## ⏱️ Minute 1: Two-Tier Architecture (Mode A)
@@ -15,7 +20,10 @@ python lab.py mode-a
 python lab.py client-cli products
 
 # 3. View the active daily sales aggregation report
-python lab.py client-cli daily-sales
+python lab.py client-cli sales
+
+# 4. Optional: Launch interactive terminal TUI
+python lab.py client-ui
 ```
 **What to point out:**
 - Traffic travels directly from `192.168.1.20` to `10.0.3.10:3306` across the firewall router.
