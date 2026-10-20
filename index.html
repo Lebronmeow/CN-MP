@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Explore a three-tier network, send a simulated packet, and understand every firewall decision.">
-  <title>Network Workbench — Secure 3-Tier Simulator</title>
+  <meta name="description" content="Network Workbench 2.0 — Network Troubleshooting and Firewall Policy Analyzer for Small Networks. Interactive three-tier simulator, real DNS and TCP diagnostics, firewall rule analyzer, and diagnostic reporting.">
+  <title>Network Workbench 2.0 — Network Troubleshooting & Firewall Policy Analyzer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=4.9">
+  <link rel="stylesheet" href="workbench2.css?v=2.0">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -16,29 +17,46 @@
     <header class="topbar">
       <a class="brand" href="#overview" aria-label="Network Workbench home">
         <svg class="brand-mark icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v9h9M9 6h9v9"/></svg>
-        <span>Network <b>Workbench</b></span>
+        <span>Network <b>Workbench 2.0</b></span>
       </a>
       <nav class="nav-list" aria-label="Main navigation">
         <a href="#overview" class="nav-item active" data-section="overview"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="6" height="6" rx="1"/><rect x="15" y="14" width="6" height="6" rx="1"/><path d="M6 10v7h9M9 7h9v7"/></svg>Overview</a>
         <a href="#simulate" class="nav-item" data-section="simulate"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>Simulate</a>
         <a href="#rules" class="nav-item" data-section="rules"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>Rules</a>
+        <a href="#diagnostics" class="nav-item" data-section="diagnostics"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Diagnostics</a>
+        <a href="#analyzer" class="nav-item" data-section="analyzer"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="M12 8v4m0 4h.01"/></svg>Policy Analyzer</a>
+        <a href="#troubleshoot" class="nav-item" data-section="troubleshoot"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Troubleshoot</a>
+        <a href="#reports" class="nav-item" data-section="reports"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Reports</a>
         <a href="#learn" class="nav-item" data-section="learn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 3 4v14c3-1 6-1 9 2 3-3 6-3 9-2V4c-2-1-6-1-9 1Z"/></svg>Learn</a>
       </nav>
+      <div id="backendStatusPill" class="backend-status-pill offline" title="Start 'python app.py' to enable live TCP and DNS sockets">
+        <span class="status-dot"></span><span>Checking Backend...</span>
+      </div>
     </header>
 
     <main id="main-content" class="content" tabindex="-1">
+      <!-- 01 / OVERVIEW SECTION -->
       <section id="overview" class="page-section active-section" aria-labelledby="overviewTitle">
         <div class="section-intro overview-intro">
-          <div class="hero-copy"><p class="eyebrow">SECURE THREE-TIER ARCHITECTURE</p><h1 id="overviewTitle">A network you can <em>reason about.</em></h1><p class="project-description">An interactive browser-based simulation of a secure three-tier network architecture that models packet flow and firewall access-control decisions.</p><p>Follow the request. Inspect the boundaries. Discover why a firewall lets one packet through and stops another.</p><a class="primary-button" href="#simulate">Send a test packet<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
-           <div class="hero-art" aria-label="Web, application and data tiers with an animated packet path">
-             <svg class="backdrop-trace" viewBox="0 0 900 300" focusable="false" aria-hidden="true"><path id="backgroundTracePath" d="M150 150H750"/><path id="backgroundTraceProgress" d="M150 150H750"/><circle id="backgroundTracePacket" cx="150" cy="150" r="4"/></svg>
-             <ol class="tier-model">
-               <li class="server-tier server-web"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>01 /</span> Web</h3><p>Public interface</p><code>10.0.1.10</code></li>
-               <li class="server-tier server-app"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>02 /</span> App</h3><p>Business logic</p><code>10.0.2.10</code></li>
-               <li class="server-tier server-data"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>03 /</span> Data</h3><p>Private storage</p><code>10.0.3.10</code></li>
-             </ol>
-           </div>
-           <div class="tier-explanation"><h2>Three layers. <em>One intended path.</em></h2><p>Web serves the interface; App handles the logic; Data stores private records. Each hop is checked against the firewall policy.</p></div>
+          <div class="hero-copy">
+            <p class="eyebrow">NETWORK TROUBLESHOOTING & FIREWALL POLICY ANALYZER</p>
+            <h1 id="overviewTitle">A network you can <em>diagnose and reason about.</em></h1>
+            <p class="project-description">Network Workbench 2.0 bridges architectural theory and real-world networking. Test real DNS and TCP connectivity, audit firewall policies for shadowing and least-privilege violations, simulate 3-tier packet flows, and produce comprehensive diagnostic reports.</p>
+            <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;">
+              <a class="primary-button" href="#diagnostics">Run Real Diagnostics<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+              <a class="secondary-button" href="#analyzer">Audit Firewall Policy</a>
+              <a class="secondary-button" href="#simulate">Send Test Packet</a>
+            </div>
+          </div>
+          <div class="hero-art" aria-label="Web, application and data tiers with an animated packet path">
+            <svg class="backdrop-trace" viewBox="0 0 900 300" focusable="false" aria-hidden="true"><path id="backgroundTracePath" d="M150 150H750"/><path id="backgroundTraceProgress" d="M150 150H750"/><circle id="backgroundTracePacket" cx="150" cy="150" r="4"/></svg>
+            <ol class="tier-model">
+              <li class="server-tier server-web"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>01 /</span> Web</h3><p>Public interface</p><code>10.0.1.10</code></li>
+              <li class="server-tier server-app"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>02 /</span> App</h3><p>Business logic</p><code>10.0.2.10</code></li>
+              <li class="server-tier server-data"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>03 /</span> Data</h3><p>Private storage</p><code>10.0.3.10</code></li>
+            </ol>
+          </div>
+          <div class="tier-explanation"><h2>Three layers. <em>One intended path.</em></h2><p>Web serves the interface; App handles the logic; Data stores private records. Each hop is checked against the firewall policy.</p></div>
         </div>
 
         <figure class="topology-card">
@@ -83,8 +101,9 @@
         <div class="architecture-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><div><b>Separate responsibilities. Limit access.</b><p>A client enters through the web tier. The web tier calls the application; only the application queries the database. Direct shortcuts are blocked to keep private data private.</p></div></div>
       </section>
 
+      <!-- 02 / SIMULATE SECTION (Preserved & Enhanced with Teacher's Demo) -->
       <section id="simulate" class="page-section" aria-labelledby="simulateTitle">
-        <div class="section-intro"><div><p class="eyebrow">PACKET EXPERIMENT</p><h1 id="simulateTitle">Make a request. See the decision.</h1><p>Choose a source, destination, protocol and port. Follow the firewall’s reasoning, one checkpoint at a time.</p></div><span class="helper-text">Browser-only · No real traffic</span></div>
+        <div class="section-intro"><div><p class="eyebrow">PACKET EXPERIMENT</p><h1 id="simulateTitle">Make a request. See the decision.</h1><p>Choose a source, destination, protocol and port. Follow the firewall’s reasoning, one checkpoint at a time.</p></div><span class="helper-text">Browser-only · Three-tier simulation model</span></div>
         <div class="simulator-layout">
           <div class="simulator-panel"><div class="panel-header"><h2>Packet builder</h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8Zm-9 5 9 5 9-5M12 13v8"/></svg></div>
             <div class="form-grid">
@@ -96,7 +115,17 @@
             <div id="customPortWrap" class="custom-port-wrap" hidden><label for="customPort">Custom port</label><input id="customPort" type="number" min="1" max="65535" placeholder="e.g. 8080" aria-describedby="formError"></div>
             <p id="formError" class="form-error" role="alert" hidden></p>
             <div class="builder-actions"><button id="startSimulation" class="primary-button" type="button">Start simulation<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg></button><button id="cancelSimulation" class="secondary-button" type="button" disabled>Cancel</button></div>
-            <div class="quick-scenarios"><h3>Start with a question</h3><button type="button" data-scenario="allowed-web"><span>Can a client visit the website?</span><small>Client to web · :443</small></button><button type="button" data-scenario="blocked-db"><span>Can a client query private data?</span><small>Client to database · :3306</small></button><button type="button" data-scenario="allowed-app"><span>Can the application query data?</span><small>App to database · :3306</small></button></div>
+            <div class="quick-scenarios">
+              <h3>Start with a question</h3>
+              <button type="button" data-scenario="allowed-web"><span>Can a client visit the website?</span><small>Client to web · :443</small></button>
+              <button type="button" data-scenario="blocked-db"><span>Can a client query private data?</span><small>Client to database · :3306</small></button>
+              <button type="button" data-scenario="allowed-app"><span>Can the application query data?</span><small>App to database · :3306</small></button>
+              <!-- Teacher Demo Button -->
+              <button type="button" id="teacherDemoSimBtn" style="border-left:3px solid var(--orange);">
+                <span style="color:var(--orange);">Teacher Demo: Direct Client &rarr; DB Access</span>
+                <small>Permit R-03 and trace what happens when client bypasses app tier</small>
+              </button>
+            </div>
           </div>
           <div class="result-panel"><div class="result-top"><div><p class="eyebrow">PACKET TRACE</p><h2 id="resultTitle">Ready for a test packet</h2></div><span id="decisionBadge" class="decision-badge neutral" role="status">WAITING</span></div>
             <div class="packet-route"><div class="route-labels"><span><small>From</small><span id="routeSource">CLIENT</span></span><span><small>To</small><span id="routeDestination">WEB SERVER</span></span><span><small>Port</small><span id="routePort">443</span></span></div></div>
@@ -106,14 +135,298 @@
         </div>
       </section>
 
+      <!-- 03 / RULES SECTION (Preserved & Enhanced) -->
       <section id="rules" class="page-section" aria-labelledby="rulesTitle">
         <div class="section-intro"><div><p class="eyebrow">ACCESS POLICY</p><h1 id="rulesTitle">An explicit rule for every boundary.</h1><p>Read the source, destination and service together. An allowed path grants only the access a tier needs.</p></div><span class="helper-text">No matching rule? Deny by default.</span></div>
         <div class="policy-editor"><div><h2>Experiment with the policy</h2><p id="policyWarning">Changing a decision changes the simulated firewall, and can open access the recommended baseline blocks. The Overview diagram always shows the recommended baseline; your edited simulation may differ.</p></div><button id="resetRules" class="secondary-button" type="button">Reset to baseline</button></div>
         <p id="rulesStatus" class="rules-status" role="status" aria-live="polite" aria-atomic="true">Recommended baseline policy is active.</p>
         <div class="table-wrap" tabindex="0" role="region" aria-label="Firewall rules; scroll horizontally on small screens" aria-describedby="policyWarning"><table><caption class="sr-only">Editable firewall access rules for the three-tier network</caption><thead><tr><th scope="col">Rule</th><th scope="col">Source</th><th scope="col">Destination</th><th scope="col">Port</th><th scope="col">Decision</th><th scope="col">Why?</th></tr></thead><tbody id="rulesTable"></tbody></table></div>
-        <div class="rule-callout"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><div><b>Least privilege in the recommended baseline</b><p>Servers can talk to the next tier only when they need to. The baseline never exposes the database directly to the client or web tier. This simplified model matches endpoints and port; TCP and UDP selections share the same rules.</p></div></div>
+        
+        <!-- Teacher Question Deep Dive -->
+        <div class="insight-callout warning" style="margin-top:20px;">
+          <h4>Teacher Discussion: When can the client access the database directly?</h4>
+          <p>
+            In the recommended three-tier architecture, Rule <strong>R-03 (Client &rarr; Database :3306)</strong> is set to <strong>DENY</strong>.
+            If an administrator changes Rule R-03 to <strong>ALLOW</strong> (or if an untrusted network rule allows direct access):
+          </p>
+          <ul style="margin:8px 0 8px 20px;padding:0;">
+            <li><strong>The packet travels directly:</strong> The simulated firewall lets the client connect straight to <code>10.0.3.10:3306</code>.</li>
+            <li><strong>Why people mistakenly do it:</strong> Small office setups or developer convenience (e.g. running local MySQL Workbench, direct reporting, or legacy scripts).</li>
+            <li><strong>Catastrophic security risk:</strong> It completely bypasses authentication and validation in the Application Tier, exposes database ports to brute-force attacks, and risks data exfiltration if the client subnet is compromised.</li>
+          </ul>
+          <p>Use the <strong>Policy Analyzer</strong> tab to see how automated rules-engines flag this as a critical tier-bypass violation!</p>
+        </div>
+
+        <div class="rule-callout" style="margin-top:16px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><div><b>Least privilege in the recommended baseline</b><p>Servers can talk to the next tier only when they need to. The baseline never exposes the database directly to the client or web tier. This simplified model matches endpoints and port; TCP and UDP selections share the same rules.</p></div></div>
       </section>
 
+      <!-- 04 / REAL NETWORK DIAGNOSTICS SECTION (NEW) -->
+      <section id="diagnostics" class="page-section" aria-labelledby="diagnosticsTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">REAL-WORLD NETWORK TESTING</p>
+            <h1 id="diagnosticsTitle">Live DNS Resolution &amp; TCP Socket Probes</h1>
+            <p>Perform genuine operating system network diagnostics using Python standard sockets. Differentiate between open ports (SYN-ACK), closed ports (TCP RST), and firewall timeouts.</p>
+          </div>
+          <span class="helper-text">Genuine socket calls · Latency &amp; status</span>
+        </div>
+
+        <!-- Controllable Demo Server Box -->
+        <div class="demo-server-box">
+          <div class="demo-server-info">
+            <h3>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+              Classroom Demo Server &bull; <span id="demoServerStatus">STOPPED (PORT CLOSED)</span>
+            </h3>
+            <p>Turn this test web service on or off to demonstrate live TCP handshake (SYN-ACK) vs stopped service (RST) to your teacher.</p>
+          </div>
+          <button id="toggleDemoServerBtn" type="button" class="primary-button btn-sm">Start Demo Server on :8080</button>
+        </div>
+
+        <div class="wb-grid-layout">
+          <!-- Diagnostics Form -->
+          <div class="wb-card">
+            <div class="wb-card-header">
+              <h2>Diagnostic Target</h2>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+            </div>
+
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Quick target presets:</p>
+            <div class="preset-tag-group">
+              <button type="button" class="preset-tag diag-preset" data-host="127.0.0.1" data-port="8080">127.0.0.1 : 8080 (Demo Server)</button>
+              <button type="button" class="preset-tag diag-preset" data-host="127.0.0.1" data-port="3306">127.0.0.1 : 3306 (MySQL Port)</button>
+              <button type="button" class="preset-tag diag-preset" data-host="127.0.0.1" data-port="22">127.0.0.1 : 22 (SSH)</button>
+              <button type="button" class="preset-tag diag-preset" data-host="example.com" data-port="443" data-allow-public="true">example.com : 443</button>
+              <button type="button" class="preset-tag diag-preset" data-host="1.1.1.1" data-port="53" data-allow-public="true">1.1.1.1 : 53 (DNS)</button>
+            </div>
+
+            <div class="wb-form-group">
+              <label for="diagHost">Hostname or IP Address</label>
+              <input type="text" id="diagHost" class="wb-input" value="127.0.0.1" placeholder="e.g. 127.0.0.1 or example.com">
+            </div>
+
+            <div class="wb-form-group">
+              <label for="diagPort">Destination Service Port</label>
+              <input type="number" id="diagPort" class="wb-input" value="8080" min="1" max="65535" placeholder="8080">
+            </div>
+
+            <div class="wb-form-group">
+              <label for="diagTimeout">Socket Timeout (Seconds)</label>
+              <input type="number" id="diagTimeout" class="wb-input" value="3.0" step="0.5" min="0.5" max="10.0">
+            </div>
+
+            <label class="wb-checkbox-label">
+              <input type="checkbox" id="diagAllowPublic">
+              <span>Allow Authorized Public Targets (Restricted to localhost &amp; private lab subnets by default for responsible testing)</span>
+            </label>
+
+            <div style="margin-top:24px;">
+              <button id="runDiagnosticsBtn" type="button" class="primary-button" style="width:100%;">
+                Run Real Network Diagnostics
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Diagnostic Results Output -->
+          <div id="diagnosticResults" hidden>
+            <!-- Rendered by workbench2.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 / FIREWALL POLICY ANALYZER SECTION (NEW) -->
+      <section id="analyzer" class="page-section" aria-labelledby="analyzerTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">FIREWALL POLICY AUDITING</p>
+            <h1 id="analyzerTitle">Static Rule Analysis &amp; Conflict Detection</h1>
+            <p>Identify overly broad access, shadowed rules, conflicting decisions, and rule-ordering problems before deployment. Findings are derived from formal rule logic analysis.</p>
+          </div>
+          <span class="helper-text">Formal rule parser · Least privilege validation</span>
+        </div>
+
+        <div class="wb-card">
+          <div class="wb-card-header">
+            <div>
+              <h2>Policy Rule Set</h2>
+              <p id="policyPresetDescription" style="font-size:13px;color:var(--muted);margin-top:4px;">Select a policy preset or edit rules directly.</p>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <label for="policyPresetSelect" class="sr-only">Choose policy preset</label>
+              <select id="policyPresetSelect" class="wb-select" style="width:auto;font-size:13px;padding:6px 10px;">
+                <option value="baseline">Recommended 3-Tier Baseline (Secure)</option>
+                <option value="teacher_client_db">Teacher Demo: Client Direct Database Access (Hazard)</option>
+                <option value="vulnerable_lab">Vulnerable Lab / Small Office (SSH &amp; DB Exposed)</option>
+                <option value="shadowed_conflict">Shadowed Rules &amp; Order Hazards (Dead Code)</option>
+                <option value="wildcard_permissive">Overly Broad Wildcard (ANY-ANY Allow)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rule ID</th>
+                  <th>Source</th>
+                  <th>Destination</th>
+                  <th>Port</th>
+                  <th>Protocol</th>
+                  <th>Action</th>
+                  <th>Comment</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="analyzerRulesTableBody">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;gap:10px;">
+              <button id="addAnalyzerRuleBtn" type="button" class="secondary-button btn-sm">+ Add Rule</button>
+              <button id="exportPolicyJsonBtn" type="button" class="secondary-button btn-sm">Export JSON</button>
+              <label class="secondary-button btn-sm" style="cursor:pointer;margin:0;">
+                Import JSON <input type="file" id="importPolicyJsonInput" accept=".json" style="display:none;">
+              </label>
+            </div>
+            <button id="runAnalyzerBtn" type="button" class="primary-button">
+              Analyze Firewall Policy
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="analyzerFindingsContainer">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- 06 / TROUBLESHOOTING & COMPARISON MODE (NEW) -->
+      <section id="troubleshoot" class="page-section" aria-labelledby="troubleshootTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">TROUBLESHOOTING WORKBENCH</p>
+            <h1 id="troubleshootTitle">Simulated Policy vs. Real Connectivity</h1>
+            <p>Compare simulated firewall decisions against actual live socket results. Understand why a connection fails: Is it blocked by a firewall, or is the service simply stopped?</p>
+          </div>
+          <span class="helper-text">Discrepancy detection &bull; Root-cause analysis</span>
+        </div>
+
+        <div class="wb-card">
+          <div class="wb-card-header">
+            <h2>Correlation Setup</h2>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+          </div>
+
+          <div class="form-grid" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="wb-form-group">
+              <label for="troubleshootFlowSelect">Select Tier Connection Hop</label>
+              <select id="troubleshootFlowSelect" class="wb-select">
+                <option value="client-web">Client &rarr; Web Server (:443 / :8080)</option>
+                <option value="web-app">Web Server &rarr; Application Server (:5000)</option>
+                <option value="client-db" selected>Teacher Focus: Client &rarr; Database Server (:3306)</option>
+                <option value="app-db">Application Server &rarr; Database Server (:3306)</option>
+              </select>
+            </div>
+
+            <div class="wb-form-group">
+              <label for="troubleshootSimDecision">Simulated Policy Decision</label>
+              <select id="troubleshootSimDecision" class="wb-select">
+                <option value="DENY" selected>DENY (Recommended Baseline)</option>
+                <option value="ALLOW">ALLOW (User Override / Permissive)</option>
+              </select>
+            </div>
+
+            <div class="wb-form-group">
+              <label for="troubleshootRealHost">Real Host to Test</label>
+              <input type="text" id="troubleshootRealHost" class="wb-input" value="127.0.0.1">
+            </div>
+
+            <div class="wb-form-group">
+              <label for="troubleshootRealPort">Real Port to Probe</label>
+              <input type="number" id="troubleshootRealPort" class="wb-input" value="3306">
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <button id="runComparisonBtn" type="button" class="primary-button">
+              Run Correlation Analysis
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="comparisonResultsBox" hidden>
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- 07 / DIAGNOSTIC REPORTS & HISTORY (NEW) -->
+      <section id="reports" class="page-section" aria-labelledby="reportsTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">AUDIT TRAIL &amp; REPORTING</p>
+            <h1 id="reportsTitle">Diagnostic History &amp; Official Assessment Report</h1>
+            <p>Generate downloadable, printable assessment reports suitable for small-office administrators or lab instructors. Review stored test logs in SQLite.</p>
+          </div>
+          <span class="helper-text">SQLite persistence &bull; Print-to-PDF ready</span>
+        </div>
+
+        <div class="wb-card no-print">
+          <div class="wb-card-header">
+            <h2>Report Actions</h2>
+            <div style="display:flex;gap:10px;">
+              <button id="generateReportBtn" type="button" class="primary-button btn-sm">Generate Assessment Report</button>
+              <button id="printReportBtn" type="button" class="secondary-button btn-sm">Print / Save as PDF</button>
+              <button id="downloadReportHtmlBtn" type="button" class="secondary-button btn-sm">Download HTML</button>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin:0;">
+            The diagnostic report synthesizes your most recent real network probes, policy analyzer findings, architectural model correlation, and administrator recommendations into an official assessment document.
+          </p>
+        </div>
+
+        <div id="reportPreviewArea" hidden>
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- SQLite History Log Table -->
+        <div class="wb-card no-print" style="margin-top:24px;">
+          <div class="wb-card-header">
+            <div>
+              <h2>Test History Log (SQLite Database)</h2>
+              <p style="font-size:13px;color:var(--muted);margin-top:4px;">Persisted probe history from <code>history.db</code></p>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <button id="refreshHistoryBtn" type="button" class="secondary-button btn-sm">Refresh</button>
+              <button id="clearHistoryBtn" type="button" class="secondary-button btn-sm" style="color:var(--orange);">Clear History</button>
+            </div>
+          </div>
+
+          <div class="table-wrap" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Target Host</th>
+                  <th>Port</th>
+                  <th>Status</th>
+                  <th>Latency</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- Loaded from SQLite -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 08 / LEARN SECTION (Preserved) -->
       <section id="learn" class="page-section" aria-labelledby="learnTitle">
         <div class="section-intro"><div><p class="eyebrow">THE FUNDAMENTALS</p><h1 id="learnTitle">Networking, in plain language.</h1><p>A few simple concepts make every packet trace easier to read. Build a mental model, then put it to the test.</p></div><a href="#simulate" class="text-link">Try an experiment<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
         <div class="section-header"><h2 id="lessonWorkbenchTitle">Explore the packet, one idea at a time.</h2><span class="helper-text">Guided interactive lessons</span></div>
@@ -124,9 +437,14 @@
         <div id="learnGrid" class="learn-grid" role="region" aria-labelledby="glossaryTitle"></div>
         <div class="architecture-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v9h9M9 6h9v9"/></svg><div><b>Why three tiers?</b><p>Separating the web, application and database responsibilities limits the blast radius of an attack and makes each layer easier to secure, scale and understand.</p></div></div>
       </section>
-      <footer><span>Network Workbench <span class="footer-divider">/</span> Secure 3-Tier Simulator</span><span>Built for learning. All packets stay in your browser.</span></footer>
+
+      <footer>
+        <span>Network Workbench 2.0 &bull; Network Troubleshooting &amp; Firewall Policy Analyzer</span>
+        <span>Built for computer networks education &bull; Real socket probes &amp; simulated architecture</span>
+      </footer>
     </main>
   </div>
   <script src="script.js?v=4.1"></script>
+  <script src="workbench2.js?v=2.0"></script>
 </body>
 </html>
