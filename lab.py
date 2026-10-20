@@ -103,13 +103,32 @@ def cmd_status(args):
     print("\n=== Active Containers ===")
     docker_cmd = get_docker_cmd()
     if docker_cmd[0] == "wsl":
-        subprocess.run(["wsl", "-u", "root", "-d", "Ubuntu", "-e", "docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"])
+        subprocess.run(["wsl", "-d", "Ubuntu", "-e", "docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"])
     else:
         subprocess.run(["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"])
 
     print("\n=== Firewall FORWARD Policy & Rule Counters ===")
     res = exec_in_container("lab_firewall", ["iptables", "-L", "FORWARD", "-v", "-n", "--line-numbers"])
     print(res.stdout)
+
+def cmd_client_cli(args):
+    """Run ShopLedger Mode A CLI client inside lab_client container."""
+    docker_cmd = get_docker_cmd()
+    sub_args = args.extra_args if hasattr(args, "extra_args") and args.extra_args else []
+    if docker_cmd[0] == "wsl":
+        full_cmd = ["wsl", "-d", "Ubuntu", "-e", "docker", "exec", "lab_client", "python3", "/app/shopledger_cli.py"] + sub_args
+    else:
+        full_cmd = ["docker", "exec", "lab_client", "python3", "/app/shopledger_cli.py"] + sub_args
+    subprocess.run(full_cmd)
+
+def cmd_client_ui(args):
+    """Run ShopLedger Mode A Textual TUI client inside lab_client container."""
+    docker_cmd = get_docker_cmd()
+    if docker_cmd[0] == "wsl":
+        full_cmd = ["wsl", "-d", "Ubuntu", "-e", "docker", "exec", "-it", "lab_client", "python3", "/app/shopledger_ui.py"]
+    else:
+        full_cmd = ["docker", "exec", "-it", "lab_client", "python3", "/app/shopledger_ui.py"]
+    subprocess.run(full_cmd)
 
 def run_matrix_scans(mode_name):
     """Scan between each tier and print a cross-tier matrix for the current mode."""
@@ -213,6 +232,11 @@ def main():
     subparsers.add_parser("status", help="Show lab status and firewall counters")
     subparsers.add_parser("verify", help="Run ping, nc, and nmap verification across modes")
 
+    p_cli = subparsers.add_parser("client-cli", help="Execute Mode A ShopLedger CLI client command")
+    p_cli.add_argument("extra_args", nargs=argparse.REMAINDER, help="Arguments passed directly to shopledger_cli.py")
+
+    subparsers.add_parser("client-ui", help="Launch interactive Mode A ShopLedger Textual TUI client")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -225,7 +249,9 @@ def main():
         "mode-b": cmd_mode_b,
         "mode-custom": cmd_mode_custom,
         "status": cmd_status,
-        "verify": cmd_verify
+        "verify": cmd_verify,
+        "client-cli": cmd_client_cli,
+        "client-ui": cmd_client_ui
     }
     dispatch[args.command](args)
 

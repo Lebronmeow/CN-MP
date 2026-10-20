@@ -1,11 +1,16 @@
-FROM alpine:3.20
+FROM nginx:1.27-alpine
 
-RUN apk add --no-cache iproute2 bash python3
+RUN apk add --no-cache \
+    iproute2 \
+    bash \
+    openssl \
+    curl
 
-WORKDIR /app
-COPY entrypoint.sh ./
-COPY mock.py ./
-RUN chmod +x entrypoint.sh
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY html/ /usr/share/nginx/html/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 443
-ENTRYPOINT ["/app/entrypoint.sh"]
+
+ENTRYPOINT ["/entrypoint.sh"]

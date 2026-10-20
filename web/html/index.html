@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopLedger — Mode B: Three-Tier Web Portal</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151d30;
+      --border: #233152;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dark: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { font-size: 24px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .badge-tls {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+    .card-value { font-size: 28px; font-weight: 700; color: #fff; }
+    .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .section-header h2 { font-size: 18px; font-weight: 600; }
+
+    .table-wrap { overflow-x: auto; max-height: 440px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid rgba(35, 49, 82, 0.5); }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .sku { font-family: monospace; color: var(--accent); }
+    .stock-ok { color: var(--green); font-weight: 600; }
+    .stock-low { color: var(--amber); font-weight: 600; }
+    .stock-critical { color: var(--red); font-weight: 600; }
+
+    form label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    form select, form input {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0d1322;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    form select:focus, form input:focus { outline: none; border-color: var(--accent); }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 10px;
+      background: var(--accent-dark);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: var(--accent); }
+    .msg-box {
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 12px;
+      display: none;
+    }
+    .msg-success { background: rgba(16, 185, 129, 0.2); border: 1px solid var(--green); color: #34d399; }
+    .msg-error { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--red); color: #f87171; }
+    .arch-flow {
+      font-size: 12px;
+      color: var(--muted);
+      background: #0d1322;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 20px;
+      border-left: 3px solid var(--accent);
+    }
+    .arch-flow code { color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>ShopLedger</h1>
+        <span class="badge">Mode B: Three-Tier Web</span>
+        <span class="badge badge-tls">TLS Protected :443</span>
+      </div>
+      <div style="font-size: 12px; color: var(--muted);">
+        Connected to Nginx Web Tier (<code>10.0.1.10</code>)
+      </div>
+    </header>
+
+    <!-- KPI Summary Cards -->
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Total Products</div>
+        <div id="statProducts" class="card-value">...</div>
+        <div class="card-sub">Active inventory catalog</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Low Stock Alert</div>
+        <div id="statLowStock" class="card-value" style="color: var(--amber);">...</div>
+        <div class="card-sub">Items requiring reorder (&le; 10 units)</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total Invoices</div>
+        <div id="statInvoices" class="card-value">...</div>
+        <div class="card-sub">Historical recorded sales</div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-grid">
+      <!-- Left Column: Products & Inventory -->
+      <div class="card">
+        <div class="section-header">
+          <h2>Inventory Management</h2>
+          <input type="text" id="searchInput" placeholder="Search SKU or name..." style="width: 200px; margin-bottom: 0;">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Stock</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <tr><td colspan="5" style="text-align:center;">Loading products via Web -> App -> DB...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right Column: Create Invoice Form -->
+      <div class="card">
+        <div class="section-header">
+          <h2>Create New Invoice</h2>
+        </div>
+        <form id="invoiceForm">
+          <label for="customerSelect">Customer</label>
+          <select id="customerSelect" required>
+            <option value="">Select customer...</option>
+          </select>
+
+          <label for="productSelect">Product</label>
+          <select id="productSelect" required>
+            <option value="">Select product...</option>
+          </select>
+
+          <label for="quantityInput">Quantity</label>
+          <input type="number" id="quantityInput" min="1" max="100" value="1" required>
+
+          <div style="font-size: 13px; margin-bottom: 12px; color: var(--muted);">
+            Unit Price: <span id="unitPriceDisplay" style="color: #fff; font-weight: 600;">$0.00</span> |
+            Estimated Total: <span id="estTotalDisplay" style="color: var(--accent); font-weight: 700;">$0.00</span>
+          </div>
+
+          <button type="submit" class="btn" id="submitBtn">Generate Invoice</button>
+          <div id="formMsg" class="msg-box"></div>
+        </form>
+
+        <div class="arch-flow">
+          <b>How this request flows:</b>
+          <p>Browser &rarr; <code>Web Server :443</code> &rarr; <code>App Server :5000</code> &rarr; <code>MySQL :3306</code></p>
+          <p>All stock decrements execute in an ACID transaction on the database tier.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let productsList = [];
+    let customersList = [];
+
+    async function loadData() {
+      try {
+        const [prodRes, custRes, invRes, lowRes] = await Promise.all([
+          fetch('/api/products').then(r => r.json()),
+          fetch('/api/customers').then(r => r.json()),
+          fetch('/api/invoices?limit=100').then(r => r.json()),
+          fetch('/api/products/low-stock').then(r => r.json())
+        ]);
+
+        productsList = prodRes;
+        customersList = custRes;
+
+        document.getElementById('statProducts').textContent = productsList.length;
+        document.getElementById('statInvoices').textContent = invRes.length;
+        document.getElementById('statLowStock').textContent = lowRes.length;
+
+        renderProducts(productsList);
+        renderCustomerOptions(customersList);
+        renderProductOptions(productsList);
+      } catch (e) {
+        console.error("Failed to load initial data", e);
+      }
+    }
+
+    function renderProducts(list) {
+      const tbody = document.getElementById('productsTableBody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No matching products found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(p => {
+        let stockClass = 'stock-ok';
+        if (p.stock <= 5) stockClass = 'stock-critical';
+        else if (p.stock <= 10) stockClass = 'stock-low';
+        return `
+          <tr>
+            <td class="sku">${p.sku}</td>
+            <td><b>${p.name}</b></td>
+            <td>${p.category}</td>
+            <td>$${p.price.toFixed(2)}</td>
+            <td class="${stockClass}">${p.stock} units</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderCustomerOptions(list) {
+      const select = document.getElementById('customerSelect');
+      select.innerHTML = '<option value="">Select customer...</option>' +
+        list.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    function renderProductOptions(list) {
+      const select = document.getElementById('productSelect');
+      select.innerHTML = '<option value="">Select product...</option>' +
+        list.map(p => `<option value="${p.sku}" data-price="${p.price}" data-stock="${p.stock}">${p.name} ($${p.price.toFixed(2)} - ${p.stock} left)</option>`).join('');
+    }
+
+    // Dynamic price calculation
+    const prodSelect = document.getElementById('productSelect');
+    const qtyInput = document.getElementById('quantityInput');
+    function updateCalc() {
+      const opt = prodSelect.selectedOptions[0];
+      if (!opt || !opt.dataset.price) {
+        document.getElementById('unitPriceDisplay').textContent = '$0.00';
+        document.getElementById('estTotalDisplay').textContent = '$0.00';
+        return;
+      }
+      const price = parseFloat(opt.dataset.price);
+      const qty = parseInt(qtyInput.value) || 1;
+      document.getElementById('unitPriceDisplay').textContent = '$' + price.toFixed(2);
+      document.getElementById('estTotalDisplay').textContent = '$' + (price * qty).toFixed(2);
+    }
+    prodSelect.addEventListener('change', updateCalc);
+    qtyInput.addEventListener('input', updateCalc);
+
+    // Search filter
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = productsList.filter(p =>
+        p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+      );
+      renderProducts(filtered);
+    });
+
+    // Form submission
+    document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('formMsg');
+      const submitBtn = document.getElementById('submitBtn');
+      msg.style.display = 'none';
+
+      const customerId = parseInt(document.getElementById('customerSelect').value);
+      const sku = prodSelect.value;
+      const qty = parseInt(qtyInput.value);
+
+      if (!customerId || !sku || !qty) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing Transaction...';
+
+      try {
+        const res = await fetch('/api/invoices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_id: customerId,
+            items: [{ product_sku: sku, quantity: qty }]
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Invoice creation failed');
+        }
+
+        msg.className = 'msg-box msg-success';
+        msg.textContent = `Invoice ${data.invoice_number} created successfully! Total: $${data.total_amount}. Stock updated.`;
+        msg.style.display = 'block';
+
+        // Reload fresh inventory
+        await loadData();
+        updateCalc();
+      } catch (err) {
+        msg.className = 'msg-box msg-error';
+        msg.textContent = err.message;
+        msg.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Generate Invoice';
+      }
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
