@@ -41,9 +41,9 @@ const authenticRecordedData = {
   recorded_at: "2026-10-20 17:26 UTC",
   latency: {
     iterations: 100,
-    speedup_factor: 23.16,
-    mode_a_two_tier: { min: 0.22, median: 0.26, mean: 0.51, p95: 0.37, p99: 0.52, count: 100 },
-    mode_b_three_tier: { min: 7.02, median: 10.77, mean: 11.81, p95: 12.90, p99: 22.74, count: 100 }
+    speedup_factor: 21.86,
+    mode_a_two_tier: { min: 0.20, median: 0.21, mean: 0.23, p95: 0.29, p99: 0.41, count: 100 },
+    mode_b_three_tier: { min: 4.07, median: 4.59, mean: 4.68, p95: 5.67, p99: 6.03, count: 100 }
   },
   nmap: {
     A: `=== NMAP AUDIT — MODE A (Two-Tier) ===
@@ -151,6 +151,7 @@ let visual = null;
 // Dual Data Source Manager (Live Controller vs Recorded Replay)
 // -------------------------------------------------------------------
 const CONTROLLER_URL = 'http://127.0.0.1:8080';
+const CONTROLLER_TOKEN = 'lab_ctrl_secret_token_2026';
 
 async function checkControllerConnection() {
   if (typeof fetch === 'undefined') return false;
@@ -182,12 +183,14 @@ function setDataSource(mode) {
     if (label) label.textContent = 'LIVE LAB (127.0.0.1:8080)';
     if (btn) btn.textContent = 'Switch to Recorded';
     if (footer) footer.textContent = 'Active Data Source: Live Controller (127.0.0.1:8080) · 6 Containers Connected';
+    updatePcapLinks();
     startLivePolling();
   } else {
     if (dot) dot.className = 'status-indicator-dot recorded';
     if (label) label.textContent = 'RECORDED (Vercel Replay)';
     if (btn) btn.textContent = 'Connect Live';
     if (footer) footer.textContent = 'Active Data Source: Authentic Recorded Replay (Run: 2026-10-20)';
+    updatePcapLinks();
     stopLivePolling();
   }
 }
@@ -215,6 +218,20 @@ function stopLivePolling() {
     clearInterval(livePollingInterval);
     livePollingInterval = null;
   }
+}
+
+function updatePcapLinks() {
+  if (typeof document === 'undefined' || !document.querySelectorAll) return;
+  const links = document.querySelectorAll('.pcap-link');
+  if (!links) return;
+  links.forEach(link => {
+    const fn = link.getAttribute('data-filename') || 'live.pcap0';
+    if (dataSource === 'live') {
+      link.href = `${CONTROLLER_URL}/captures/${fn}`;
+    } else {
+      link.href = `evidence/samples/${fn}`;
+    }
+  });
 }
 
 async function pollLiveStatus() {
@@ -296,7 +313,10 @@ async function switchArchitectureMode(mode, userInitiated = true) {
     try {
       await fetch(`${CONTROLLER_URL}/mode`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Lab-Token': CONTROLLER_TOKEN
+        },
         body: JSON.stringify({ mode })
       });
     } catch (e) {
@@ -648,7 +668,10 @@ async function startSimulation(event) {
     try {
       const probeResp = await fetch(`${CONTROLLER_URL}/probe`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Lab-Token': CONTROLLER_TOKEN
+        },
         body: JSON.stringify({
           src: packet.source,
           dst: destination.ip,
@@ -755,25 +778,25 @@ function renderEvidence() {
     <text x="145" y="86" text-anchor="end" font-family="DM Mono, monospace" font-size="10" fill="#64748b">Direct MySQL :3306</text>
     <!-- 0.51ms scaled (scale factor: 33px per ms) -> 16.8px width -->
     <rect x="160" y="55" width="22" height="36" rx="4" fill="#294cba"/>
-    <text x="192" y="77" font-family="DM Mono, monospace" font-weight="700" font-size="12" fill="#294cba">0.51 ms (mean)</text>
+    <text x="192" y="77" font-family="DM Mono, monospace" font-weight="700" font-size="12" fill="#294cba">0.21 ms (median)</text>
 
     <!-- Mode B Bar (Three-Tier: Mean 11.81ms) -->
     <text x="145" y="145" text-anchor="end" font-family="Inter, sans-serif" font-weight="600" font-size="13" fill="#1e293b">Mode B (Three-Tier)</text>
     <text x="145" y="161" text-anchor="end" font-family="DM Mono, monospace" font-size="10" fill="#64748b">Nginx → App → DB</text>
     <!-- 11.81ms scaled (11.81 * 33 = 390px width) -->
     <rect x="160" y="130" width="390" height="36" rx="4" fill="#ac4625"/>
-    <text x="560" y="152" font-family="DM Mono, monospace" font-weight="700" font-size="12" fill="#ac4625">11.81 ms (mean)</text>
+    <text x="560" y="152" font-family="DM Mono, monospace" font-weight="700" font-size="12" fill="#ac4625">4.59 ms (median)</text>
     
     <!-- P95 whiskers for Mode B (12.90ms) -->
     <line x1="550" y1="148" x2="585" y2="148" stroke="#ac4625" stroke-width="2"/>
     <line x1="585" y1="140" x2="585" y2="156" stroke="#ac4625" stroke-width="2"/>
-    <text x="592" y="145" font-family="DM Mono, monospace" font-size="9" fill="#ac4625">P95: 12.9ms</text>
+    <text x="592" y="145" font-family="DM Mono, monospace" font-size="9" fill="#ac4625">P95: 5.67ms</text>
   `;
 
   // Update stat callouts
   if ($('statModeAMean')) $('statModeAMean').textContent = `${a.mean} ms`;
   if ($('statModeBMean')) $('statModeBMean').textContent = `${b.mean} ms`;
-  if ($('speedupBadge')) $('speedupBadge').textContent = `⚡ Mode A is ${latData.speedup_factor}x Faster`;
+  if ($('speedupBadge')) $('speedupBadge').textContent = `⚡ Mode A is ${latData.speedup_factor || 21.9}x Faster (Reuse) · 7.7x (Per-Request)`;
 
   // Update Nmap default tab
   renderNmapTab('A');

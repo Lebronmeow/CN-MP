@@ -21,7 +21,7 @@ import subprocess
 import time
 from typing import List, Optional, Union
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -29,12 +29,55 @@ from pydantic import BaseModel, Field
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAPTURES_DIR = os.path.join(BASE_DIR, "captures")
 FW_TOKEN = os.environ.get("FW_TOKEN", "lab_firewall_secret_token_2026")
+CONTROLLER_API_TOKEN = os.environ.get("LAB_CONTROLLER_TOKEN", "lab_ctrl_secret_token_2026")
 
 app = FastAPI(
     title="Network Workbench v2 Controller API",
     description="Bridge API between the Network Workbench UI and the isolated multi-tier Docker lab.",
     version="2.0.0"
 )
+
+# -------------------------------------------------------------
+# Host-Header Validation Middleware (DNS Rebinding Protection)
+# -------------------------------------------------------------
+ALLOWED_HOSTS = {
+    "localhost",
+    "127.0.0.1",
+    "localhost:8080",
+    "127.0.0.1:8080",
+    "testserver",
+}
+
+@app.middleware("http")
+async def host_header_validation_middleware(request: Request, call_next):
+    """
+    Validates the HTTP Host header against an explicit allowlist.
+    Protects against DNS rebinding and host-header injection attacks.
+    """
+    raw_host = request.headers.get("host", "").strip().lower()
+    host_only = raw_host.split(":")[0]
+    if raw_host not in ALLOWED_HOSTS and host_only not in ALLOWED_HOSTS:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": f"Host '{raw_host}' is not permitted. Only localhost and 127.0.0.1 are allowed."}
+        )
+    return await call_next(request)
+
+def verify_mutating_token(request: Request):
+    """
+    Validates security token for state-mutating operations (POST /mode, POST /rules/custom).
+    Accepts X-Lab-Token header or Authorization: Bearer <token>.
+    """
+    token = request.headers.get("X-Lab-Token") or request.headers.get("x-lab-token")
+    auth_header = request.headers.get("Authorization", "")
+    if not token and auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+
+    if not token or token != CONTROLLER_API_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized: Missing or invalid 'X-Lab-Token' header for mutating controller operations."
+        )
 
 # CORS restricted to local origins
 app.add_middleware(
@@ -193,7 +236,17 @@ def health_check():
 
 @app.get("/status")
 def get_status():
-    """Returns current architecture mode, container health, and rule counts."""
+    """
+    Returns current architecture mode, container health, and rule counts.
+
+    HOW /status REACHES THE CONTAINERS:
+    1. Container Lifecycle: The Controller inspects container operational health
+       directly via the local Docker daemon socket (`docker ps --filter name=lab_`).
+    2. Active Firewall Policy: The Controller queries the Alpine firewall router's
+       internal control daemon (`fw_daemon.py`) across the isolated management subnet
+       (`mgmt_net`, interface 172.28.0.254:9099) using a pre-shared bearer token (`X-FW-Token`).
+       This ensures telemetry collection is physically isolated from the tenant data tiers.
+    """
     fw_status = query_fw_daemon("GET", "/status")
     containers = get_container_statuses()
 
@@ -230,8 +283,12 @@ def get_rules():
 
 
 @app.post("/mode")
-def set_mode(req: ModeRequest):
-    """Switch architecture mode ('A', 'B', 'custom') without data loss."""
+def set_mode(req: ModeRequest, request: Request):
+    """
+    Switch architecture mode ('A', 'B', 'custom') without data loss.
+    Requires mutating token authorization via X-Lab-Token header.
+    """
+    verify_mutating_token(request)
     mode_upper = req.mode.upper() if req.mode.lower() in {"a", "b"} else req.mode.lower()
     if mode_upper not in {"A", "B", "custom"}:
         raise HTTPException(
@@ -260,8 +317,12 @@ def set_mode(req: ModeRequest):
 
 
 @app.post("/rules/custom")
-def set_custom_rules(req: CustomRulesRequest):
-    """Apply a validated custom ruleset without shell interpolation."""
+def set_custom_rules(req: CustomRulesRequest, request: Request):
+    """
+    Apply a validated custom ruleset without shell interpolation.
+    Requires mutating token authorization via X-Lab-Token header.
+    """
+    verify_mutating_token(request)
     payload_rules = []
     for r in req.rules:
         src = r.source.strip()
@@ -318,6 +379,18 @@ def run_probe(req: ProbeRequest):
     """
     Execute a real probe FROM the specified container to dst:port.
     Measures latency in milliseconds and identifies which firewall rule matched.
+
+    HOW /probe REACHES THE CONTAINERS:
+    1. Source Execution: The Controller does NOT originate packets from the host.
+       Instead, it invokes `docker exec` against the designated source container
+       (e.g., `lab_client`, `lab_web`) using strict parameter arrays (no shell interpolation).
+    2. Packet Traversal: The probe tool (`nc` or `ping`) generates genuine network frames
+       inside the source container's Linux network namespace.
+    3. Firewall Enforcement: Because application networks are `internal: true`, packets
+       cannot route through Docker's bridge gateway and MUST pass through `lab_firewall`
+       (192.168.1.254, 10.0.1.254, etc.).
+    4. Observation: The Controller records round-trip latency, return code, and queries
+       the firewall daemon to observe which rule matched or dropped the packet.
     """
     src_key = req.src.lower().strip()
     if src_key not in ALLOWED_CONTAINERS:

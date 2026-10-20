@@ -1,0 +1,71 @@
+===========================================================================
+        BUSINESS LOGIC INTEGRITY & PRICE TAMPERING DEMONSTRATION
+        Comparing Two-Tier (Mode A) vs Three-Tier (Mode B)
+===========================================================================
+
+===========================================================================
+        BUSINESS LOGIC INTEGRITY & PRICE TAMPERING DEMONSTRATION
+        Comparing Two-Tier (Mode A) vs Three-Tier (Mode B)
+===========================================================================
+
+===========================================================================
+  [DEMO 1] MODE A (TWO-TIER): DIRECT CLIENT SQL INJECTION / PRICE TAMPER
+===========================================================================
+Scenario: A manipulated Mode A desktop client connects using client_user.
+Goal: Purchase 'SKU-1002' (Catalog: $499.50) for $0.01.
+
+[*] Target Product  : Dell UltraSharp 27 4K Monitor (SKU: SKU-1002)
+[*] Real Catalog Price : $499.50
+[*] Stock Before Sale : 15
+
+[>] Client executing raw INSERT with manipulated unit_price = $0.01...
+[!] SUCCESS (DATA INTEGRITY VIOLATED): Database accepted manipulated price!
+    Invoice Created: INV-TAMPER-A-602003
+    Billed Amount  : $0.01 (Expected: $499.50)
+    Stock Decrement: 15 -> 14
+    Underlying Grant: client_user has 'GRANT UPDATE (stock) ON shopledger.products'
+                      and 'GRANT INSERT ON shopledger.invoice_items'.
+    Key Takeaway    : The database verified SQL privileges, but had NO WAY
+                      to verify application-level business rules!
+
+===========================================================================
+SUMMARY OF ARCHITECTURAL SECURITY TRADE-OFF:
+  Mode A (Two-Tier)   : Tampered price accepted by DB because SQL grants
+                        lack domain business logic context.
+  Mode B (Three-Tier) : Tampered price actively detected and rejected with
+                        HTTP 400 Bad Request by the application tier.
+===========================================================================
+
+===========================================================================
+        BUSINESS LOGIC INTEGRITY & PRICE TAMPERING DEMONSTRATION
+        Comparing Two-Tier (Mode A) vs Three-Tier (Mode B)
+===========================================================================
+
+===========================================================================
+  [DEMO 2] MODE B (THREE-TIER): MIDDLEWARE VALIDATION / TAMPER REJECTION
+===========================================================================
+Scenario: An attacker sends an HTTP request to FastAPI with a manipulated price.
+Goal: Attempt to purchase 'SKU-1002' for $0.01 via the API.
+
+[>] Sending HTTP POST with payload: {"customer_id": 1, "items": [{"product_sku": "SKU-1002", "quantity": 1, "unit_price": 0.01}]}...
+[+] HTTP 400 Bad Request (SECURITY INVARIANT ENFORCED):
+    API Server Response: {"detail":"Price manipulation rejected: Client submitted unit_price $0.01 does not match catalog price $499.50 for SKU 'SKU-1002'."}
+    Key Takeaway       : In Three-Tier, the client NEVER talks to the database.
+                         The FastAPI tier validates prices against the server catalog
+                         and rejected the fraudulent price before it ever reached MySQL.
+
+===========================================================================
+SUMMARY OF ARCHITECTURAL SECURITY TRADE-OFF:
+  Mode A (Two-Tier)   : Tampered price accepted by DB because SQL grants
+                        lack domain business logic context.
+  Mode B (Three-Tier) : Tampered price actively detected and rejected with
+                        HTTP 400 Bad Request by the application tier.
+===========================================================================
+
+===========================================================================
+SUMMARY OF ARCHITECTURAL SECURITY TRADE-OFF:
+  Mode A (Two-Tier)   : Tampered price accepted by DB because SQL grants
+                        lack domain business logic context.
+  Mode B (Three-Tier) : Tampered price actively detected and rejected with
+                        HTTP 400 Bad Request by the application tier.
+===========================================================================

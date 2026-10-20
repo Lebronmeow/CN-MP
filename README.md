@@ -57,11 +57,12 @@ MODE B: Three-Tier Architecture (Segmented Web-App-DB)
 | :--- | :--- | :--- |
 | **Primary Topology** | Thick Client $\to$ Central Database Server (`:3306`) | Client $\to$ Web Proxy (`:443`) $\to$ App API (`:5000`) $\to$ Database (`:3306`) |
 | **Network Attack Surface** | Database port `:3306` directly reachable from client subnet. Database must enforce user-level privilege separation. | Zero client access to database or application layers. DB isolated deep in a protected backend subnet. |
-| **Measured Latency** | **$0.51\,\text{ms}$ Mean** ($0.22\,\text{ms}$ Min) — **$23.2\times$ faster** round-trip time. | **$11.81\,\text{ms}$ Mean** ($7.02\,\text{ms}$ Min) — Multi-hop TCP handshakes, TLS termination, and JSON parsing. |
+| **Measured Latency (Reuse)** | **$0.21\,\text{ms}$ Median** (P95: $0.29\,\text{ms}$) — **$21.9\times$ faster** round-trip time. | **$4.59\,\text{ms}$ Median** (P95: $5.67\,\text{ms}$) — Multi-hop TCP dispatch, TLS crypto, and JSON parsing. |
+| **Measured Latency (New Conn)** | **$1.14\,\text{ms}$ Median** (P95: $1.50\,\text{ms}$) — **$7.7\times$ faster** setup. | **$8.72\,\text{ms}$ Median** (P95: $9.33\,\text{ms}$) — Full TLS 1.3 handshake + HTTP parsing. |
 | **Credential Distribution** | Database credentials (`client_user`) reside on client machines/executables. Compromise of a client terminal yields DB access. | Database credentials (`app_user`) reside solely in protected application tier environment. Clients only hold session tokens. |
-| **Business Logic Layer** | Logic embedded in client applications or stored procedures. Updating business rules requires updating every client terminal. | Centralized in application service (FastAPI). Client updates require zero redeployment; schema changes are abstracted by APIs. |
-| **Encryption & Audit** | Raw MySQL client-server protocol. Credentials and queries visible on wire unless TLS is explicitly enforced on MySQL. | Modern TLS 1.3 encryption terminates at edge (`nginx`). Centralized API access logs and CloudTrail-style audit points. |
-| **Scalability & Connection Pooling** | Every active client opens dedicated MySQL connections; MySQL connection limits (typically 151–1,000) bound client scaling. | Application tier pools database connections (SQLAlchemy connection pools); supports millions of stateless HTTP clients. |
+| **Business Logic Layer** | Logic embedded in client applications. SQL table/column grants cannot enforce domain price invariants (see Tamper Demo). | Centralized in application service (FastAPI). Server validates input against catalog before database commits. |
+| **Transport Encryption** | Raw MySQL client-server protocol. **Plaintext or TLS is a configuration choice** (`SHOW STATUS LIKE 'Ssl_cipher'`). | Modern TLS 1.3 encryption terminates at edge (`nginx`). Centralized API access logs and CloudTrail-style audit points. |
+| **Scalability & Pooling** | Every active client opens dedicated MySQL connections; MySQL connection limits (typically 151–1,000) bound client scaling. | Application tier pools database connections (SQLAlchemy/connection pools); supports millions of stateless HTTP clients. |
 | **Ideal Deployment Environment** | Trusted private LANs, high-frequency internal data entry, small business accounting, medical clinics. | Internet-facing web applications, cloud SaaS platforms, untrusted public environments, zero-trust enterprise perimeters. |
 
 ---
@@ -119,7 +120,7 @@ The firewall container (`lab_firewall`) runs Alpine Linux with `NET_ADMIN` capab
   - [`firewall/rules/mode-a.sh`](file:///f:/CN-MP/firewall/rules/mode-a.sh): Mode A (Client $\to$ DB `:3306` ALLOW).
   - [`firewall/rules/mode-b.sh`](file:///f:/CN-MP/firewall/rules/mode-b.sh): Mode B (Client $\to$ Web `:443`, Web $\to$ App `:5000`, App $\to$ DB `:3306` ALLOW; inter-tier bypasses DENIED).
   - [`firewall/rules/mode-custom.sh`](file:///f:/CN-MP/firewall/rules/mode-custom.sh): Mode C (Dynamic custom rules).
-- **Control Daemon (`fw_daemon.py`):** Binds strictly to `172.28.0.254:9099` on `mgmt_net`, protected by shared bearer token authentication (`FW_AUTH_TOKEN`). All other tiers attempting to contact `:9099` are rejected by the `INPUT` chain.
+- **Control Daemon (`fw_daemon.py`):** Binds strictly to `172.28.0.254:9099` on `mgmt_net`, protected by shared bearer token authentication (`FW_TOKEN`). All other tiers attempting to contact `:9099` are rejected by the `INPUT` chain.
 
 ### Packet Sniffing (`lab_sniffer`)
 The packet sniffer container (`lab_sniffer`) attaches to the firewall's network namespace (`network_mode: "service:firewall"`), running rotating `tcpdump` instances writing standard pcap files to [`captures/`](file:///f:/CN-MP/captures):
@@ -128,6 +129,7 @@ The packet sniffer container (`lab_sniffer`) attaches to the firewall's network 
 - `web.pcap0`: Native Ethernet capture on interface `eth2` (`web_net`).
 - `app.pcap0`: Native Ethernet capture on interface `eth3` (`app_net`).
 - `db.pcap0`: Native Ethernet capture on interface `eth4` (`db_net`).
+- Sanitized sample pcaps are committed to [`evidence/samples/`](file:///f:/CN-MP/evidence/samples) for static/Vercel downloads.
 
 ---
 
@@ -143,30 +145,27 @@ Both Mode A and Mode B operate over the exact same schema and dataset defined in
 
 ### Least-Privilege Database Users
 To demonstrate real security controls at the data layer, three separate database users are provisioned:
-1. **`client_user` (`identified by 'ClientPass123!'`):**
-   - Strictly restricted to `SELECT` on `products` and `customers`, and `SELECT, INSERT` on `invoices` and `invoice_items`.
+1. **`client_user`:**
+   - Strictly restricted to `SELECT` on `products` and `customers`, `UPDATE (stock)` on `products`, and `SELECT, INSERT` on `invoices` and `invoice_items`.
    - **No DDL privileges:** Cannot `DROP`, `ALTER`, or `CREATE` tables.
    - **No administrative access:** Zero access to `mysql.*` or user management tables.
-2. **`app_user` (`identified by 'AppUserPass123!'`):**
+2. **`app_user`:**
    - Full CRUD (`SELECT, INSERT, UPDATE, DELETE`) on the `shopledger` business tables.
    - Used exclusively by the FastAPI application service in Mode B.
-3. **`admin` (`identified by 'AdminRootPass123!'`):**
+3. **`admin_user`:**
    - Full administrative database access, reserved solely for maintenance and initial migrations; never used by application or client workloads.
 
 ---
 
-## 5. Controller API & Custom Rule Engine
+## 5. Controller API & Security Hardening
 
 The Controller service ([`controller/main.py`](file:///f:/CN-MP/controller/main.py)) runs on `127.0.0.1:8080`, providing a clean, validated bridge between the web dashboard and the container lab:
 
-- **`GET /health`:** Health check endpoint verifying Docker connectivity.
-- **`GET /status`:** Reports the active mode (`A`, `B`, or `custom`), container statuses, and active firewall counters.
-- **`GET /rules`:** Returns parsed `iptables -S` and `iptables -L -v -n` output with real packet and byte counters.
-- **`POST /mode`:** Safely triggers firewall mode changes via `lab.py`.
-- **`POST /rules/custom`:** Validates and executes user-defined firewall rules. Strictly validates source IP, destination IP, protocol (`tcp`, `udp`, `icmp`), port ranges, and action (`ACCEPT`, `DROP`, `REJECT`) against strict allowlists using parameter arrays—**no arbitrary shell string interpolation**.
-- **`POST /probe`:** Executes live probes (`src`, `dst`, `port`, `proto`) from inside real containers and returns the connection result (`open`, `filtered`, `refused`), round-trip latency in milliseconds, and the matching iptables rule.
-- **`GET /captures`:** Lists available `.pcap` files in `./captures`.
-- **`GET /captures/{filename}`:** Allows downloading raw packet captures directly from the dashboard.
+- **Host-Header Allowlist:** Protects against DNS rebinding attacks by allowing only `localhost` and `127.0.0.1`.
+- **Token-Authenticated Mutating Endpoints:** Changing modes (`POST /mode`) or applying rules (`POST /rules/custom`) requires the `X-Lab-Token` header (`LAB_CONTROLLER_TOKEN`).
+- **Telemetry & Probing Architecture:**
+  - **`/status`:** Queries Docker daemon lifecycle status and inspects firewall counters via the isolated `mgmt_net` interface (`172.28.0.254:9099`).
+  - **`/probe`:** Issues `docker exec` against the designated source container (`lab_client`, `lab_web`) with strict argument lists (no shell interpolation). The probe packet originates inside the container's network namespace and routes across the firewall router, recording RTT and matching rule counters.
 
 ---
 
@@ -174,268 +173,140 @@ The Controller service ([`controller/main.py`](file:///f:/CN-MP/controller/main.
 
 All benchmark measurements are 100% reproducible and generated via [`evidence/run_all.py`](file:///f:/CN-MP/evidence/run_all.py).
 
-### Latency Benchmark (100 Iterations)
-Comparing 100 identical operations (fetching a customer invoice and line items) across Mode A and Mode B:
+### Latency Benchmark (100 Iterations, Warm-Up Dropped)
+Evaluating 100 identical product queries after dropping 5 initial warm-up runs:
 
 ```
 ================================================================================
                     EMPIRICAL PERFORMANCE BENCHMARK REPORT
 ================================================================================
+Profile 1: Persistent Connection Reuse (MySQL socket vs HTTPS Keep-Alive)
 Metric                       Mode A (Two-Tier)           Mode B (Three-Tier)
 --------------------------------------------------------------------------------
 Sample Size                  100 iterations              100 iterations
-Min Latency                  0.22 ms                     7.02 ms
-Mean Latency                 0.51 ms                     11.81 ms
-Median (P50) Latency         0.28 ms                     11.55 ms
-95th Percentile (P95)        0.37 ms                     12.90 ms
-Max Latency                  1.35 ms                     15.42 ms
-Std Deviation                0.24 ms                     1.48 ms
+Min Latency                  0.20 ms                     4.07 ms
+Mean Latency                 0.23 ms                     4.68 ms
+Median (P50) Latency         0.21 ms                     4.59 ms
+95th Percentile (P95)        0.29 ms                     5.67 ms
+Max Latency                  0.53 ms                     6.03 ms
+Std Deviation                0.05 ms                     0.41 ms
 --------------------------------------------------------------------------------
-MEASURED SPEEDUP FACTOR:     Two-Tier is 23.16x FASTER than Three-Tier
+SPEEDUP FACTOR:              Two-Tier is 21.86x FASTER (Median) / 20.35x (Mean)
+
+Profile 2: Per-Request Connection Establishment (New TCP socket each time)
+Metric                       Mode A (Two-Tier)           Mode B (Three-Tier)
+--------------------------------------------------------------------------------
+Sample Size                  100 iterations              100 iterations
+Min Latency                  0.94 ms                     7.87 ms
+Mean Latency                 1.21 ms                     8.86 ms
+Median (P50) Latency         1.14 ms                     8.72 ms
+95th Percentile (P95)        1.50 ms                     9.33 ms
+Max Latency                  2.33 ms                     9.80 ms
+Std Deviation                0.22 ms                     0.47 ms
+--------------------------------------------------------------------------------
+SPEEDUP FACTOR:              Two-Tier is 7.65x FASTER (Median) / 7.09x (Mean)
 ================================================================================
 ```
 
-#### Why Two-Tier is $23.2\times$ Faster
-1. **Network Hops:** Mode A requires 1 round-trip hop across the firewall router directly to the MySQL socket. Mode B requires 3 distinct hops: Client $\to$ Nginx (`:443`), Nginx $\to$ FastAPI (`:5000`), and FastAPI $\to$ MySQL (`:3306`).
-2. **Protocol Overhead:** Mode A uses compact binary MySQL wire protocol. Mode B incurs TLS 1.3 handshake negotiation, symmetric AES-GCM crypto decryption, HTTP request header parsing, JSON serialization, and ASGI application dispatch.
-
-### Nmap Port Scan Audit
-
-#### Client scanning Database Server (`10.0.3.10`):
-- **Mode A (Allowed):**
-  ```text
-  PORT     STATE    SERVICE
-  3306/tcp open     mysql
-  443/tcp  filtered https
-  5000/tcp filtered upnp
-  22/tcp   filtered ssh
-  ```
-- **Mode B (Blocked by Firewall):**
-  ```text
-  PORT     STATE    SERVICE
-  3306/tcp filtered mysql
-  443/tcp  filtered https
-  5000/tcp filtered upnp
-  22/tcp   filtered ssh
-  ```
-
-#### Client scanning Web Server (`10.0.1.10`) in Mode B:
-```text
-PORT     STATE    SERVICE
-443/tcp  open     https
-3306/tcp filtered mysql
-5000/tcp filtered upnp
-22/tcp   filtered ssh
-```
-
-### Packet Dissection (Wireshark / tcpdump)
-
-#### Plaintext SQL on the Wire (Mode A, port 3306)
-Unencrypted Two-Tier traffic exposes database credentials and query structures to any packet sniffer in the path:
-```text
-Frame 1: 192.168.1.20 -> 10.0.3.10 MySQL Protocol
-    Packet Length: 94 bytes
-    Handshake Response Packet:
-        User: client_user
-        Auth-Plugin: caching_sha2_password
-Frame 2: 192.168.1.20 -> 10.0.3.10 MySQL Protocol
-    Query: SELECT id, invoice_number, total_amount, status FROM invoices WHERE id = 1
-```
-
-#### End-to-End TLS 1.3 Encrypted Traffic (Mode B, port 443)
-Three-Tier traffic terminates TLS 1.3 at the reverse proxy; sniffers observe only encrypted application records:
-```text
-Frame 1: 192.168.1.20 -> 10.0.1.10 TLSv1.3
-    Client Hello, Version: TLS 1.3 (0x0304)
-    Cipher Suite: TLS_AES_256_GCM_SHA384
-Frame 2: 10.0.1.10 -> 192.168.1.20 TLSv1.3
-    Server Hello, Change Cipher Spec, Application Data
-Frame 3: 192.168.1.20 -> 10.0.1.10 TLSv1.3
-    Application Data Protocol: http-over-tls (Encrypted Payload: 418 bytes)
-```
+#### Benchmark Limitations Note:
+1. **Single-Host Environment:** Containers communicate across Linux bridge subnets on one physical machine; WAN latency (15–100 ms) is not simulated.
+2. **Payload Size:** The benchmark query fetches 5 product rows; network protocol overhead dominates over database disk I/O.
+3. **Sequential Concurrency:** Serialized execution ($c = 1$) does not measure MySQL connection pool exhaustion under high concurrency ($c > 500$), where Mode B's connection pooling excels.
 
 ---
 
-## 7. Dashboard: Live vs. Recorded Mode
+## 7. Security Demonstrations & Audits
+
+### A. Two-Tier TLS Demonstration (`python lab.py tls-demo`)
+Proves that cleartext on port 3306 is an administrator/client **configuration choice**, not an inherent flaw of Two-Tier architecture:
+```text
+--- [1] Mode A with TLS Disabled (Plaintext) ---
+  Transport Cipher : NONE (Plaintext Wire Traffic)
+  TLS Version      : NONE
+
+--- [2] Mode A with TLS Required (Encrypted) ---
+  Transport Cipher : TLS_AES_256_GCM_SHA384
+  TLS Version      : TLSv1.3
+```
+
+### B. Stock Decrement & Price Tampering Demo (`python lab.py tamper-demo`)
+Demonstrates the fundamental architectural security trade-off:
+- **Mode A (Two-Tier):** Client executes `INSERT INTO invoice_items ... unit_price = 0.01`. The database allows the insert because `client_user` has `GRANT INSERT ON invoice_items`. **SQL table privileges cannot evaluate application business rules.**
+- **Mode B (Three-Tier):** Client submits `unit_price: 0.01` to FastAPI. The API server detects the discrepancy against `products.price` and **rejects the tampering with HTTP 400 Bad Request** before any database write occurs.
+
+### C. Secrets Scan & Git History Verification
+- Verified that `history.db` was **never committed** to Git.
+- Audited with [`scripts/secrets_scan.py`](file:///f:/CN-MP/scripts/secrets_scan.py); all credentials reside in `.env`.
+
+---
+
+## 8. Dashboard: Live vs. Recorded Mode
 
 The evolved dashboard ([`index.html`](file:///f:/CN-MP/index.html), [`style.css`](file:///f:/CN-MP/style.css), [`script.js`](file:///f:/CN-MP/script.js)) runs seamlessly in two distinct modes:
 
 1. **LIVE Mode (Local Lab Attached):**
-   - When running locally with the Controller API active on `http://127.0.0.1:8080`.
+   - Connects to Controller API on `http://127.0.0.1:8080`.
    - Live Mode badge glows emerald green.
    - Probing triggers actual network packets across the Docker containers.
    - Live packet and byte counters update from kernel `iptables` counters in real time.
-   - Real-time architecture switching updates the lab containers.
 2. **RECORDED Mode (Vercel / Static Deployment):**
    - Deployed at [`cnmp.vercel.app`](https://cnmp.vercel.app).
    - Operates with **zero backend dependencies**, replaying authentic committed measurements from [`evidence/recorded_data.json`](file:///f:/CN-MP/evidence/recorded_data.json).
-   - Clearly labeled: *"Recorded Mode: Replaying authentic data captured from a real run on 2026-10-20"*.
-   - Features responsive pure-SVG latency comparison histogram, interactive tabbed Nmap outputs, packet dissections, and PCAP download links.
+   - PCAP download links serve committed sample pcaps from [`evidence/samples/`](file:///f:/CN-MP/evidence/samples).
 
 ---
 
-## 8. Quickstart & Verification Guide
-
-### Prerequisites
-- Docker & Docker Compose v2 (Docker Desktop on Windows with WSL 2, or Docker on Linux/macOS)
-- Python 3.9+ (with `pip`)
-- Node.js (for running unit tests)
+## 9. Quickstart & Verification Guide
 
 ### 1. Launch the Lab
-Clone the repository and start all containers:
 ```bash
-# Clone repository
+# Clone repository and switch to lab-v2 branch
 git clone https://github.com/Lebronmeow/CN-MP.git
 cd CN-MP
 git checkout lab-v2
 
-# Start the lab containers (builds images & starts isolated subnets)
+# Start the lab containers
 python lab.py start
 ```
 
-### 2. Run the Multi-Tier Verification Matrix
-Verify cross-tier network policies in both Mode A and Mode B:
+### 2. Run the Verification Suite & Demos
 ```bash
+# Run multi-tier firewall verification matrix (14 tests per mode)
 python lab.py verify
-```
-This tests ICMP pings, traceroute paths, security isolation of the management daemon (`:9099`), and runs a complete 14-test verification matrix confirming 100% policy enforcement.
 
-### 3. Run the ShopLedger Client (Mode A)
-Execute transactions directly against the MySQL database:
-```bash
-# Display product inventory
-python lab.py client-cli products
+# Run TLS disabled vs TLS required demonstration
+python lab.py tls-demo
 
-# View low stock report
-python lab.py client-cli low-stock
+# Run stock decrement and price tampering demonstration
+python lab.py tamper-demo
 
-# Generate daily sales report
-python lab.py client-cli daily-sales
-
-# Create a new invoice
-python lab.py client-cli create-invoice --customer-id 1 --items 3:2,5:1
-
-# Launch the interactive Textual Terminal UI
-python lab.py client-ui
+# Run unit tests
+npm test
 ```
 
-### 4. Switch Between Architectures
+### 3. Run Benchmarks & Controller
 ```bash
-# Switch to Two-Tier (Mode A)
-python lab.py mode-a
+# Run the empirical benchmark pipeline
+python evidence/run_all.py
 
-# Switch to Three-Tier (Mode B)
-python lab.py mode-b
-
-# Inspect active firewall rules and packet counters
-python lab.py status
-```
-
-### 5. Start the Controller API & Dashboard
-```bash
-# Start the Controller API daemon on http://127.0.0.1:8080
+# Launch the Controller API daemon
 python lab.py controller
 
-# In another terminal, serve the dashboard:
+# In another terminal, view the dashboard:
 python -m http.server 8000
 # Open http://localhost:8000 in your browser
 ```
 
-### 6. Run the Empirical Evidence Pipeline
-To regenerate all latency benchmarks, Nmap scans, packet dissections, and JSON evidence:
-```bash
-python evidence/run_all.py
-```
-
-### 7. Run Unit Tests
-```bash
-npm test
-# Or: node tests.js
-```
-Validates the state machine, architecture selector, SVG topology renderer, trade-off cards, and rule engine.
-
 ---
 
-## 9. Inspecting Packet Captures in Wireshark
+## 10. Documentation Index (`docs/`)
 
-All packet captures are written to [`captures/`](file:///f:/CN-MP/captures):
-```bash
-# View captured packets using tcpdump inside the container
-docker exec lab_sniffer tcpdump -nr /captures/live.pcap0 -c 20
-```
-
-### Helpful Wireshark Display Filters
-- **Direct MySQL Traffic (Mode A):**
-  `tcp.port == 3306 && mysql`
-- **TLS Handshake & Encrypted Application Records (Mode B):**
-  `tcp.port == 443 && (tls.handshake.type == 1 || tls.record.content_type == 23)`
-- **Inter-tier ICMP Diagnostics:**
-  `icmp.type == 8 || icmp.type == 0`
-- **Firewall Drops (TCP SYN without ACK):**
-  `tcp.flags.syn == 1 && tcp.flags.ack == 0`
-
----
-
-## 10. Repository File Structure
-
-```text
-CN-MP/
-├── app/                        # Tier 3: FastAPI Application Tier (10.0.2.10:5000)
-│   ├── Dockerfile              # Python 3.11 slim image
-│   ├── entrypoint.sh           # Waits for MySQL, runs app
-│   ├── main.py                 # REST endpoints, parameterized queries with app_user
-│   └── requirements.txt        # fastapi, uvicorn, mysql-connector-python
-├── captures/                   # Output directory for live .pcap captures (.gitignore protected)
-│   └── .gitkeep
-├── client/                     # Tier 1: Client Workstation Tier (192.168.1.20)
-│   ├── Dockerfile              # Debian image with Python, nmap, netcat, traceroute
-│   ├── entrypoint.sh           # Configures default gateway, starts host ingress relay
-│   ├── shopledger_cli.py       # Mode A direct MySQL CLI client
-│   ├── shopledger_ui.py        # Mode A interactive Textual TUI client
-│   └── requirements.txt        # textual, mysql-connector-python, rich
-├── controller/                 # Local Controller API (127.0.0.1:8080)
-│   ├── main.py                 # FastAPI service bridging UI and Docker lab
-│   └── requirements.txt        # fastapi, uvicorn, pydantic
-├── db/                         # Tier 4: MySQL 8.0 Database Tier (10.0.3.10:3306)
-│   ├── Dockerfile              # Pinned mysql:8.0-debian image
-│   ├── entrypoint.sh           # Gateway routing configuration
-│   ├── init.sql                # Schema, 3 user roles, 50 products, 20 customers, 100 invoices
-│   └── my.cnf                  # Custom MySQL server configuration
-├── evidence/                   # Reproducible benchmarks and empirical audit data
-│   ├── latency.json            # 100-run empirical latency measurements
-│   ├── mode_a_dissection.txt   # Plaintext MySQL protocol wire dissection
-│   ├── mode_b_dissection.txt   # TLS 1.3 encrypted protocol wire dissection
-│   ├── nmap_mode_a.txt         # Real Nmap port scan output in Mode A
-│   ├── nmap_mode_b.txt         # Real Nmap port scan output in Mode B
-│   ├── recorded_data.json      # Complete recorded snapshot for Vercel static replay
-│   └── run_all.py              # Automated evidence generation and benchmark script
-├── firewall/                   # Router & Firewall Tier (Alpine Linux)
-│   ├── rules/
-│   │   ├── mode-a.sh           # Mode A iptables rules (Client -> DB 3306 ALLOW)
-│   │   ├── mode-b.sh           # Mode B iptables rules (Segmented 3-tier ALLOW)
-│   │   └── mode-custom.sh      # Custom dynamic ruleset template
-│   ├── Dockerfile              # Alpine with iptables, conntrack-tools, python3
-│   ├── entrypoint.sh           # Configures interfaces, IP forwarding, launches fw_daemon
-│   └── fw_daemon.py            # Token-authenticated Unix socket/mgmt daemon (:9099)
-├── sniffer/                    # Multi-Interface Packet Capture Service
-│   ├── Dockerfile              # Alpine with tcpdump
-│   └── entrypoint.sh           # Parallel per-interface and aggregate rotating packet sniffers
-├── web/                        # Tier 2: Web / Reverse Proxy Tier (10.0.1.10:443)
-│   ├── html/
-│   │   └── index.html          # Lightweight Mode B browser portal
-│   ├── Dockerfile              # Nginx alpine with openssl TLS self-signed generation
-│   ├── entrypoint.sh           # Gateway configuration and Nginx start
-│   └── nginx.conf              # TLS 1.3 config with proxy_pass to app:5000
-├── docker-compose.yml          # Lab network definitions & 6 container specifications
-├── index.html                  # Network Workbench v2 Dashboard (Vanilla HTML5)
-├── lab.py                      # Master cross-platform CLI lab orchestrator
-├── Makefile                    # Make command shortcuts
-├── package.json                # Project metadata and test scripts
-├── README.md                   # Comprehensive project documentation
-├── script.js                   # Dashboard logic (Dual live/recorded, SVG topology, charts)
-├── style.css                   # Responsive stylesheet with accessibility & themes
-└── tests.js                    # Unit tests for dashboard logic and state machine
-```
+Comprehensive technical references are maintained in [`docs/`](file:///f:/CN-MP/docs):
+- [`docs/architecture.md`](file:///f:/CN-MP/docs/architecture.md): Deep dive into Two-Tier vs Three-Tier network topologies, subnet routing, and relay proxies.
+- [`docs/benchmarks.md`](file:///f:/CN-MP/docs/benchmarks.md): Benchmark methodology, warm-up drops, connection reuse profiles, and limitations.
+- [`docs/security-audit.md`](file:///f:/CN-MP/docs/security-audit.md): Least privilege SQL grants, secrets scan findings, Host-header validation, and price tampering analysis.
+- [`docs/firewall-rules.md`](file:///f:/CN-MP/docs/firewall-rules.md): Stateful filtering, conntrack, per-mode iptables rulesets, and management daemon isolation.
+- [`docs/wireshark-recipes.md`](file:///f:/CN-MP/docs/wireshark-recipes.md): Packet captures guide, per-interface packet dissections, and Wireshark display filter recipes.
 
 ---
 
@@ -444,5 +315,5 @@ CN-MP/
 - **Curriculum:** Computer Networks (CN) Mini-Project.
 - **Architectural Reference:** Silberschatz, Korth, Sudarshan — *Database System Concepts* (Multi-tier architectures).
 - **Network Security Reference:** Cheswick, Bellovin, Rubin — *Firewalls and Internet Security: Repelling the Wily Hacker*.
-- **Standard Protocol References:** RFC 8446 (The Transport Layer Security (TLS) Protocol Version 1.3), RFC 793 (Transmission Control Protocol), RFC 792 (Internet Control Message Protocol).
+- **Standard Protocol References:** RFC 8446 (TLS 1.3), RFC 793 (TCP), RFC 792 (ICMP).
 - **License:** [MIT License](file:///f:/CN-MP/LICENSE)

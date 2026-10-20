@@ -237,6 +237,35 @@ def cmd_verify(args):
     print("     ALL VERIFICATION CHECKS COMPLETED")
     print("="*70)
 
+def cmd_tls_demo(args):
+    """Run Mode A TLS disabled vs TLS required demonstration."""
+    ensure_host_sysctls()
+    cmd_mode_a(args)
+    time.sleep(1)
+    res = exec_in_container("lab_client", ["python3", "/app/tls_demo.py"])
+    print(res.stdout)
+    if res.stderr:
+        print(f"[err] {res.stderr}")
+
+def cmd_tamper_demo(args):
+    """Run the stock decrement and price tampering demonstration across Mode A and Mode B."""
+    ensure_host_sysctls()
+    print("\n--- Part 1: Mode A Client Direct SQL Price Manipulation ---")
+    cmd_mode_a(args)
+    time.sleep(1)
+    res_a = exec_in_container("lab_client", ["python3", "/app/tamper_demo.py", "--part=a"])
+    print(res_a.stdout)
+    if res_a.stderr:
+        print(f"[err] {res_a.stderr}")
+
+    print("\n--- Part 2: Mode B API Middleware Interception & Rejection ---")
+    cmd_mode_b(args)
+    time.sleep(1)
+    res_b = exec_in_container("lab_client", ["python3", "/app/tamper_demo.py", "--part=b"])
+    print(res_b.stdout)
+    if res_b.stderr:
+        print(f"[err] {res_b.stderr}")
+
 def cmd_controller(args):
     """Launch the Controller API on http://127.0.0.1:8080."""
     import uvicorn
@@ -256,6 +285,8 @@ def main():
     subparsers.add_parser("mode-custom", help="Switch firewall to Mode Custom")
     subparsers.add_parser("status", help="Show lab status and firewall counters")
     subparsers.add_parser("verify", help="Run ping, nc, and nmap verification across modes")
+    subparsers.add_parser("tls-demo", help="Demonstrate Mode A TLS disabled vs TLS required")
+    subparsers.add_parser("tamper-demo", help="Demonstrate stock decrement & price tampering integrity across modes")
     subparsers.add_parser("controller", help="Launch the Controller API on http://127.0.0.1:8080")
 
     p_cli = subparsers.add_parser("client-cli", help="Execute Mode A ShopLedger CLI client command")
@@ -276,6 +307,8 @@ def main():
         "mode-custom": cmd_mode_custom,
         "status": cmd_status,
         "verify": cmd_verify,
+        "tls-demo": cmd_tls_demo,
+        "tamper-demo": cmd_tamper_demo,
         "controller": cmd_controller,
         "client-cli": cmd_client_cli,
         "client-ui": cmd_client_ui

@@ -1,0 +1,21 @@
+======================================================================
+  MODE A (TWO-TIER) TRANSPORT SECURITY DEMONSTRATION
+  Demonstrating that plaintext on port 3306 is a configuration choice
+======================================================================
+
+--- [1] Mode A with TLS Disabled (Plaintext) ---
+  Transport Cipher : NONE (Plaintext Wire Traffic)
+  TLS Version      : NONE
+  Sample Query     : SELECT ... -> SKU-1001 ($99.99)
+
+--- [2] Mode A with TLS Required (Encrypted) ---
+  Transport Cipher : TLS_AES_256_GCM_SHA384
+  TLS Version      : TLSv1.3
+  Sample Query     : SELECT ... -> SKU-1001 ($99.99)
+
+======================================================================
+SUMMARY:
+  Plaintext Mode : Cipher=NONE, TLS=NONE
+  TLS Mode       : Cipher=TLS_AES_256_GCM_SHA384, TLS=TLSv1.3
+  Conclusion: Two-Tier networks can enforce full TLS encryption on the wire.
+======================================================================

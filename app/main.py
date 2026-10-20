@@ -58,6 +58,7 @@ def get_db():
 class InvoiceItemCreate(BaseModel):
     product_sku: str
     quantity: int = Field(gt=0, description="Quantity must be greater than zero")
+    unit_price: Optional[float] = Field(None, description="Optional client-submitted unit price for validation")
 
 class InvoiceCreate(BaseModel):
     customer_id: int
@@ -184,13 +185,21 @@ def create_invoice(payload: InvoiceCreate):
                         status_code=400,
                         detail=f"Insufficient inventory for {prod['name']} (SKU: {prod['sku']}). Requested: {item.quantity}, Available: {prod['stock']}"
                     )
-                line_total = float(prod["price"]) * item.quantity
+                # Server-side business logic validation: detect and reject price tampering
+                catalog_price = float(prod["price"])
+                if item.unit_price is not None and abs(item.unit_price - catalog_price) > 0.01:
+                    conn.rollback()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Price manipulation rejected: Client submitted unit_price ${item.unit_price:.2f} does not match catalog price ${catalog_price:.2f} for SKU '{item.product_sku}'."
+                    )
+                line_total = catalog_price * item.quantity
                 total_amount += line_total
                 prepared_items.append({
                     "product_id": prod["id"],
                     "sku": prod["sku"],
                     "quantity": item.quantity,
-                    "unit_price": float(prod["price"]),
+                    "unit_price": catalog_price,
                     "line_total": line_total
                 })
 
