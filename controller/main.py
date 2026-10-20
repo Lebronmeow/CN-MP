@@ -99,7 +99,7 @@ def get_docker_cmd():
         raise RuntimeError("Neither docker nor wsl found in PATH.")
 
 
-def exec_container(container_name: str, cmd_list: List[str], timeout: int = 5) -> subprocess.CompletedProcess:
+def exec_container(container_name: str, cmd_list: List[str], timeout: int = 15) -> subprocess.CompletedProcess:
     """Execute a command list in a container without shell interpolation."""
     base_docker = get_docker_cmd()
     full_cmd = base_docker + ["exec", container_name] + cmd_list
@@ -118,7 +118,7 @@ def query_fw_daemon(method: str, path: str, payload: Optional[dict] = None) -> d
         curl_args += ["-d", json.dumps(payload)]
     curl_args.append(f"http://172.28.0.254:9099{path}")
 
-    res = exec_container("lab_firewall", curl_args, timeout=5)
+    res = exec_container("lab_firewall", curl_args, timeout=15)
     if res.returncode != 0:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -142,7 +142,7 @@ def get_container_statuses() -> dict:
             "--filter", "name=lab_",
             "--format", "{{.Names}}\t{{.Status}}\t{{.State}}"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         statuses = {}
         for line in res.stdout.strip().splitlines():
             parts = line.split("\t")
@@ -239,8 +239,24 @@ def set_mode(req: ModeRequest):
             detail="Mode must be 'A' (Two-Tier), 'B' (Three-Tier), or 'custom'."
         )
 
-    result = query_fw_daemon("POST", "/mode", {"mode": mode_upper})
-    return result
+    mode_scripts = {
+        "A": "/opt/firewall/rules/mode-a.sh",
+        "B": "/opt/firewall/rules/mode-b.sh",
+        "custom": "/opt/firewall/rules/mode-custom.sh"
+    }
+    script = mode_scripts[mode_upper]
+    res = exec_container("lab_firewall", ["/bin/bash", script], timeout=15)
+    if res.returncode != 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to apply mode {mode_upper}: {res.stderr.strip()}"
+        )
+
+    return {
+        "success": True,
+        "mode": mode_upper,
+        "output": res.stdout.strip()
+    }
 
 
 @app.post("/rules/custom")

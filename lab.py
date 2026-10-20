@@ -19,7 +19,7 @@ def get_docker_cmd():
         # Native docker available
         return ["docker", "compose"]
     elif shutil.which("wsl"):
-        # Run via WSL default user
+        # Run via WSL
         return ["wsl", "-d", "Ubuntu", "-e", "docker", "compose"]
     else:
         print("[!] Error: neither docker nor wsl was found in PATH.")
@@ -201,7 +201,7 @@ def cmd_verify(args):
     print("\n[TEST 1] Testing ICMP Ping from Client (192.168.1.20) in Mode A:")
     for target_name, target_ip, should_succeed in [("Router", "192.168.1.254", True), ("Web", "10.0.1.10", False), ("App", "10.0.2.10", False), ("DB", "10.0.3.10", True)]:
         res = exec_in_container("lab_client", ["ping", "-c", "2", "-W", "1", target_ip])
-        loss = ("0% loss" in res.stdout or "0% packet loss" in res.stdout)
+        loss = (res.returncode == 0) and (" 0% packet loss" in res.stdout or ", 0% loss" in res.stdout)
         if should_succeed:
             status = "PASSED (Echo Reply received)" if loss else "FAILED (Packet lost)"
         else:

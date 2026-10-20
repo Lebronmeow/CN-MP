@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Explore a three-tier network, send a simulated packet, and understand every firewall decision.">
-  <title>Network Workbench — Secure 3-Tier Simulator</title>
+  <meta name="description" content="Explore Two-Tier vs Three-Tier network architectures with authentic lab evidence, firewall decisions, nmap audits, and pcap packet analysis.">
+  <title>Network Workbench v2 — Two-Tier vs Three-Tier Network Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap" rel="stylesheet">
@@ -16,115 +16,579 @@
     <header class="topbar">
       <a class="brand" href="#overview" aria-label="Network Workbench home">
         <svg class="brand-mark icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v9h9M9 6h9v9"/></svg>
-        <span>Network <b>Workbench</b></span>
+        <span>Network <b>Workbench</b> <small class="v2-tag">v2</small></span>
       </a>
+
+      <div class="datasource-controls" id="dataSourceControls">
+        <div class="datasource-pill" id="dataSourcePill" title="Data Source Status">
+          <span class="status-indicator-dot recorded" id="sourceDot"></span>
+          <span id="sourceLabel">RECORDED (Vercel Replay)</span>
+        </div>
+        <button type="button" class="source-switch-btn" id="sourceSwitchBtn" aria-label="Toggle between Live Lab and Recorded Replay">Connect Live</button>
+      </div>
+
       <nav class="nav-list" aria-label="Main navigation">
         <a href="#overview" class="nav-item active" data-section="overview"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="6" height="6" rx="1"/><rect x="15" y="14" width="6" height="6" rx="1"/><path d="M6 10v7h9M9 7h9v7"/></svg>Overview</a>
         <a href="#simulate" class="nav-item" data-section="simulate"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>Simulate</a>
         <a href="#rules" class="nav-item" data-section="rules"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>Rules</a>
+        <a href="#evidence" class="nav-item" data-section="evidence"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Evidence</a>
         <a href="#learn" class="nav-item" data-section="learn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 3 4v14c3-1 6-1 9 2 3-3 6-3 9-2V4c-2-1-6-1-9 1Z"/></svg>Learn</a>
       </nav>
     </header>
 
     <main id="main-content" class="content" tabindex="-1">
+      <!-- 01. OVERVIEW SECTION -->
       <section id="overview" class="page-section active-section" aria-labelledby="overviewTitle">
         <div class="section-intro overview-intro">
-          <div class="hero-copy"><p class="eyebrow">SECURE THREE-TIER ARCHITECTURE</p><h1 id="overviewTitle">A network you can <em>reason about.</em></h1><p class="project-description">An interactive browser-based simulation of a secure three-tier network architecture that models packet flow and firewall access-control decisions.</p><p>Follow the request. Inspect the boundaries. Discover why a firewall lets one packet through and stops another.</p><a class="primary-button" href="#simulate">Send a test packet<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
-           <div class="hero-art" aria-label="Web, application and data tiers with an animated packet path">
-             <svg class="backdrop-trace" viewBox="0 0 900 300" focusable="false" aria-hidden="true"><path id="backgroundTracePath" d="M150 150H750"/><path id="backgroundTraceProgress" d="M150 150H750"/><circle id="backgroundTracePacket" cx="150" cy="150" r="4"/></svg>
-             <ol class="tier-model">
-               <li class="server-tier server-web"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>01 /</span> Web</h3><p>Public interface</p><code>10.0.1.10</code></li>
-               <li class="server-tier server-app"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>02 /</span> App</h3><p>Business logic</p><code>10.0.2.10</code></li>
-               <li class="server-tier server-data"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>03 /</span> Data</h3><p>Private storage</p><code>10.0.3.10</code></li>
-             </ol>
-           </div>
-           <div class="tier-explanation"><h2>Three layers. <em>One intended path.</em></h2><p>Web serves the interface; App handles the logic; Data stores private records. Each hop is checked against the firewall policy.</p></div>
+          <div class="hero-copy">
+            <p class="eyebrow">TWO-TIER VS THREE-TIER NETWORK LAB</p>
+            <h1 id="overviewTitle">A network you can <em>reason about.</em></h1>
+            <p class="project-description">A real application ("ShopLedger") deployed in two legitimate architectural paradigms across isolated subnets (<code>192.168.1.0/24</code>, <code>10.0.1.0/24</code>, <code>10.0.2.0/24</code>, <code>10.0.3.0/24</code>) routed through an Alpine Linux iptables stateful firewall.</p>
+            <p>Direct client-to-database access is legitimate client-server architecture; three-tier enforces perimeter defense. Inspect the boundaries and measure the trade-offs.</p>
+            <div class="hero-actions">
+              <a class="primary-button" href="#simulate">Send a test packet<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+              <a class="secondary-button" href="#evidence">View authentic evidence<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></a>
+            </div>
+          </div>
+          <div class="hero-art" aria-label="Web, application and data tiers with an animated packet path">
+            <svg class="backdrop-trace" viewBox="0 0 900 300" focusable="false" aria-hidden="true"><path id="backgroundTracePath" d="M150 150H750"/><path id="backgroundTraceProgress" d="M150 150H750"/><circle id="backgroundTracePacket" cx="150" cy="150" r="4"/></svg>
+            <ol class="tier-model">
+              <li class="server-tier server-web"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>01 /</span> Web</h3><p>Public Nginx</p><code>10.0.1.10</code></li>
+              <li class="server-tier server-app"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>02 /</span> App</h3><p>FastAPI Logic</p><code>10.0.2.10</code></li>
+              <li class="server-tier server-data"><div class="server-block"><svg viewBox="0 0 120 112" focusable="false"><path class="server-top" d="M12 27 60 7 108 27 60 48Z"/><path class="server-side" d="M60 48 108 27V80L60 103Z"/><path class="server-front" d="M12 27 60 48V103L12 80Z"/><path class="server-slots" d="m22 45 28 12m-28 2 28 12m-28 2 28 12"/><path class="server-light" d="m75 65 6-3m-6 17 6-3"/></svg></div><h3><span>03 /</span> Data</h3><p>MySQL 8.0</p><code>10.0.3.10</code></li>
+            </ol>
+          </div>
         </div>
 
-        <figure class="topology-card">
-          <div class="topology-head"><div><h2>The intended path</h2><p>Recommended baseline · Example TCP service connections across three separate tiers.</p></div><span class="helper-text">Logical architecture</span></div>
+        <!-- ARCHITECTURE SELECTOR BAR -->
+        <div class="architecture-selector-card">
+          <div class="selector-header">
+            <div>
+              <h2>Deployment Architecture</h2>
+              <p>Select an architecture mode to reconfigure the firewall topology and examine routing paths.</p>
+            </div>
+            <span class="mode-pill" id="currentModePill">MODE B ACTIVE</span>
+          </div>
+          <div class="architecture-tabs" role="tablist" aria-label="Select Architecture Mode">
+            <button type="button" class="arch-tab active" data-arch="B" role="tab" aria-selected="true" id="tabModeB">
+              <span class="tab-badge">MODE B</span>
+              <strong>Three-Tier</strong>
+              <small>Web :443 → App :5000 → DB :3306</small>
+            </button>
+            <button type="button" class="arch-tab" data-arch="A" role="tab" aria-selected="false" id="tabModeA">
+              <span class="tab-badge">MODE A</span>
+              <strong>Two-Tier</strong>
+              <small>Direct Client → DB :3306</small>
+            </button>
+            <button type="button" class="arch-tab" data-arch="custom" role="tab" aria-selected="false" id="tabModeCustom">
+              <span class="tab-badge">MODE C</span>
+              <strong>Custom Rules</strong>
+              <small>User-Defined iptables Filter</small>
+            </button>
+          </div>
+        </div>
+
+        <!-- DYNAMIC TOPOLOGY DIAGRAM -->
+        <figure class="topology-card" id="topologyCard">
+          <div class="topology-head">
+            <div>
+              <h2 id="topologyHeading">Three-Tier Architecture (Mode B)</h2>
+              <p id="topologySubheading">Segmented perimeter · Public HTTPS ingress with private internal API and isolated database.</p>
+            </div>
+            <span class="helper-text" id="topologyHelper">Firewall FORWARD policy active</span>
+          </div>
           <div class="topology-scroll" tabindex="0" role="region" aria-label="Network diagram; scroll horizontally on small screens">
-            <svg class="topology-svg" viewBox="0 0 1120 340" role="img" aria-labelledby="topologyTitle topologyDesc">
-              <title id="topologyTitle">Client, web, application and database tiers with centralized firewall policy</title>
-              <desc id="topologyDesc">The client at 192.168.1.20 requests the web server at 10.0.1.10 on TCP port 443. The web server calls the application at 10.0.2.10 on TCP port 5000. The application queries the database at 10.0.3.10 on TCP port 3306. A centralized firewall policy checks each cross-tier connection. Dashed lines indicate policy checks, not physical traffic routes.</desc>
-              <defs><marker id="networkArrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 8 4 0 8Z" fill="#16786f"/></marker></defs>
-              <rect class="tier-zone" x="300" y="118" width="224" height="205" rx="8"/><rect class="tier-zone" x="590" y="118" width="224" height="205" rx="8"/><rect class="tier-zone" x="880" y="118" width="224" height="205" rx="8"/>
-              <text class="tier-title" x="320" y="144">01 / WEB TIER</text><text class="tier-title" x="610" y="144">02 / APPLICATION TIER</text><text class="tier-title" x="900" y="144">03 / DATA TIER</text>
-              <text class="tier-title" x="28" y="144">OUTSIDE THE NETWORK</text>
-              <path class="policy-link" d="M450 88H256V217M600 88H557V217M750 88H847V217"/>
+            <svg class="topology-svg" id="topologySvg" viewBox="0 0 1120 340" role="img" aria-labelledby="topologyTitle topologyDesc">
+              <title id="topologyTitle">Dynamic Network Topology</title>
+              <desc id="topologyDesc">Network Workbench v2 dynamic topology diagram displaying active packet flows and firewall rules.</desc>
+              <defs>
+                <marker id="networkArrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 8 4 0 8Z" fill="#16786f"/></marker>
+                <marker id="networkArrowModeA" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 8 4 0 8Z" fill="#294cba"/></marker>
+              </defs>
+              
+              <!-- TIER ZONES -->
+              <rect class="tier-zone" x="300" y="118" width="224" height="205" rx="8" id="zoneWeb"/>
+              <rect class="tier-zone" x="590" y="118" width="224" height="205" rx="8" id="zoneApp"/>
+              <rect class="tier-zone" x="880" y="118" width="224" height="205" rx="8" id="zoneDb"/>
+              <text class="tier-title" x="320" y="144" id="titleWeb">01 / WEB TIER (10.0.1.0/24)</text>
+              <text class="tier-title" x="610" y="144" id="titleApp">02 / APP TIER (10.0.2.0/24)</text>
+              <text class="tier-title" x="900" y="144" id="titleDb">03 / DATA TIER (10.0.3.0/24)</text>
+              <text class="tier-title" x="28" y="144">CLIENT NET (192.168.1.0/24)</text>
+              
+              <!-- FIREWALL BOX -->
               <rect class="firewall-box" x="420" y="20" width="360" height="68" rx="8"/>
               <g class="diagram-icon" transform="translate(439 38)"><path d="m12 2 9 3v8c0 5-5 8-9 10-4-2-9-5-9-10V5Z"/><path d="m8 12 3 3 6-7"/></g>
-              <text class="firewall-title" x="480" y="46">Firewall · centralized policy</text><text class="diagram-small" x="480" y="67">Checks every cross-tier request</text>
-              <path class="network-edge" d="M192 217H320" marker-end="url(#networkArrow)"/><path class="network-edge" d="M504 217H610" marker-end="url(#networkArrow)"/><path class="network-edge" d="M794 217H900" marker-end="url(#networkArrow)"/>
-              <path class="packet-motion packet-one" d="M192 217H310"/><path class="packet-motion packet-two" d="M504 217H600"/><path class="packet-motion packet-three" d="M794 217H890"/>
-              <rect class="edge-label-bg" x="212" y="177" width="88" height="26" rx="4"/><text class="edge-label" x="256" y="195" text-anchor="middle">TCP :443</text>
-              <rect class="edge-label-bg" x="511" y="177" width="92" height="26" rx="4"/><text class="edge-label" x="557" y="195" text-anchor="middle">TCP :5000</text>
-              <rect class="edge-label-bg" x="801" y="177" width="92" height="26" rx="4"/><text class="edge-label" x="847" y="195" text-anchor="middle">TCP :3306</text>
-              <rect class="diagram-node" x="28" y="164" width="164" height="106" rx="7"/><rect class="diagram-node" x="320" y="164" width="184" height="106" rx="7"/><rect class="diagram-node" x="610" y="164" width="184" height="106" rx="7"/><rect class="diagram-node" x="900" y="164" width="184" height="106" rx="7"/>
+              <text class="firewall-title" x="480" y="46">Firewall Router (Alpine iptables)</text>
+              <text class="diagram-small" x="480" y="67" id="firewallPolicyLabel">FORWARD Default DROP · Stateful conntrack</text>
+
+              <!-- DYNAMIC EDGES GROUP -->
+              <g id="topologyEdgesGroup">
+                <!-- Mode B Edges (Default) -->
+                <path class="policy-link" d="M450 88H256V217M600 88H557V217M750 88H847V217"/>
+                <path class="network-edge" d="M192 217H320" marker-end="url(#networkArrow)"/>
+                <path class="network-edge" d="M504 217H610" marker-end="url(#networkArrow)"/>
+                <path class="network-edge" d="M794 217H900" marker-end="url(#networkArrow)"/>
+                <path class="packet-motion packet-one" d="M192 217H310"/>
+                <path class="packet-motion packet-two" d="M504 217H600"/>
+                <path class="packet-motion packet-three" d="M794 217H890"/>
+                <rect class="edge-label-bg" x="212" y="177" width="88" height="26" rx="4"/><text class="edge-label" x="256" y="195" text-anchor="middle">TLS :443</text>
+                <rect class="edge-label-bg" x="511" y="177" width="92" height="26" rx="4"/><text class="edge-label" x="557" y="195" text-anchor="middle">TCP :5000</text>
+                <rect class="edge-label-bg" x="801" y="177" width="92" height="26" rx="4"/><text class="edge-label" x="847" y="195" text-anchor="middle">TCP :3306</text>
+              </g>
+
+              <!-- NODES -->
+              <rect class="diagram-node" x="28" y="164" width="164" height="106" rx="7"/>
+              <rect class="diagram-node" x="320" y="164" width="184" height="106" rx="7" id="nodeWeb"/>
+              <rect class="diagram-node" x="610" y="164" width="184" height="106" rx="7" id="nodeApp"/>
+              <rect class="diagram-node" x="900" y="164" width="184" height="106" rx="7" id="nodeDb"/>
+              
               <g class="diagram-icon" transform="translate(43 179)"><rect x="1" y="1" width="24" height="16" rx="2"/><path d="M13 17v5m-7 0h14"/></g>
-              <g class="diagram-icon" transform="translate(335 179)"><rect x="1" y="1" width="24" height="22" rx="2"/><path d="M1 8h24m-20-3h1m4 0h1M7 14h12m-12 4h8"/></g>
-              <g class="diagram-icon" transform="translate(625 179)"><rect x="1" y="1" width="24" height="22" rx="2"/><path d="m10 8-4 4 4 4m6-8 4 4-4 4"/></g>
+              <g class="diagram-icon" transform="translate(335 179)" id="iconWeb"><rect x="1" y="1" width="24" height="22" rx="2"/><path d="M1 8h24m-20-3h1m4 0h1M7 14h12m-12 4h8"/></g>
+              <g class="diagram-icon" transform="translate(625 179)" id="iconApp"><rect x="1" y="1" width="24" height="22" rx="2"/><path d="m10 8-4 4 4 4m6-8 4 4-4 4"/></g>
               <g class="diagram-icon" transform="translate(915 179)"><ellipse cx="13" cy="5" rx="11" ry="4"/><path d="M2 5v14c0 5 22 5 22 0V5M2 12c0 5 22 5 22 0"/></g>
-              <text class="node-title" x="80" y="197">Client</text><text class="node-title" x="372" y="197">Web server</text><text class="node-title" x="662" y="197">Application</text><text class="node-title" x="952" y="197">Database</text>
-              <text class="node-ip" x="44" y="229">192.168.1.20</text><text class="node-ip" x="336" y="229">10.0.1.10</text><text class="node-ip" x="626" y="229">10.0.2.10</text><text class="node-ip" x="916" y="229">10.0.3.10</text>
-              <text class="diagram-small" x="44" y="251">User device</text><text class="diagram-small" x="336" y="251">Serves the interface</text><text class="diagram-small" x="626" y="251">Runs business logic</text><text class="diagram-small" x="916" y="251">Stores private data</text>
-              <text class="segment-label" x="320" y="301">10.0.1.0/24 · HTTPS</text><text class="segment-label" x="610" y="301">10.0.2.0/24 · App API</text><text class="segment-label" x="900" y="301">10.0.3.0/24 · MySQL</text>
+              
+              <text class="node-title" x="80" y="197">Client</text>
+              <text class="node-title" x="372" y="197" id="titleNodeWeb">Web server</text>
+              <text class="node-title" x="662" y="197" id="titleNodeApp">Application</text>
+              <text class="node-title" x="952" y="197">Database</text>
+              
+              <text class="node-ip" x="44" y="229">192.168.1.20</text>
+              <text class="node-ip" x="336" y="229" id="ipNodeWeb">10.0.1.10</text>
+              <text class="node-ip" x="626" y="229" id="ipNodeApp">10.0.2.10</text>
+              <text class="node-ip" x="916" y="229">10.0.3.10</text>
+              
+              <text class="diagram-small" x="44" y="251">ShopLedger Client</text>
+              <text class="diagram-small" x="336" y="251" id="descNodeWeb">Nginx TLS Reverse Proxy</text>
+              <text class="diagram-small" x="626" y="251" id="descNodeApp">FastAPI Business Logic</text>
+              <text class="diagram-small" x="916" y="251">MySQL 8.0 Engine</text>
+              
+              <text class="segment-label" x="320" y="301" id="segWeb">10.0.1.0/24 · HTTPS :443</text>
+              <text class="segment-label" x="610" y="301" id="segApp">10.0.2.0/24 · App API :5000</text>
+              <text class="segment-label" x="900" y="301" id="segDb">10.0.3.0/24 · MySQL :3306</text>
             </svg>
           </div>
-          <figcaption class="topology-caption"><div class="diagram-key"><span><i class="key-line"></i>Allowed connection</span><span><i class="key-line dashed"></i>Policy check</span></div><p>The firewall is a <strong>logical checkpoint for every cross-tier request</strong>. Its placement above the tiers describes centralized policy, not a requirement for all physical traffic to travel through the web server.</p></figcaption>
+          <figcaption class="topology-caption">
+            <div class="diagram-key">
+              <span><i class="key-line"></i>Active allowed path</span>
+              <span><i class="key-line dashed"></i>Firewall policy route</span>
+            </div>
+            <p id="topologyCaptionText">In <strong>Three-Tier (Mode B)</strong>, the firewall enforces perimeter defense: only Nginx accepts client traffic on :443, FastAPI handles logic on :5000, and MySQL on :3306 is completely isolated on the internal database subnet.</p>
+          </figcaption>
         </figure>
 
-        <div class="section-header"><h2>Read a packet’s address</h2><a class="text-link" href="#learn">Explore the fundamentals<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
-        <div class="explain-grid">
-          <article class="mini-card"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16M9 3 7 21M17 3l-2 18"/></svg><h3>IP address <code>10.0.1.10</code></h3><p>The device’s street address. It tells the network where a packet should be delivered.</p></article>
-          <article class="mini-card"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M15 12h1M9 3v18"/></svg><h3>Port <code>:443</code></h3><p>The service’s door number. HTTPS, application APIs and databases each listen on their own port.</p></article>
-          <article class="mini-card"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8Zm-9 5 9 5 9-5M12 13v8"/></svg><h3>Packet <code>TCP</code></h3><p>A small envelope of data carrying a source, destination, protocol and port for the firewall to inspect.</p></article>
+        <!-- BALANCED TRADE-OFFS SECTION (Replacing biased "Security risk" note) -->
+        <div class="section-header">
+          <h2>Architectural Trade-offs: Two-Tier vs Three-Tier</h2>
+          <span class="helper-text">Engineering evaluation</span>
         </div>
-        <div class="architecture-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><div><b>Separate responsibilities. Limit access.</b><p>A client enters through the web tier. The web tier calls the application; only the application queries the database. Direct shortcuts are blocked to keep private data private.</p></div></div>
-      </section>
-
-      <section id="simulate" class="page-section" aria-labelledby="simulateTitle">
-        <div class="section-intro"><div><p class="eyebrow">PACKET EXPERIMENT</p><h1 id="simulateTitle">Make a request. See the decision.</h1><p>Choose a source, destination, protocol and port. Follow the firewall’s reasoning, one checkpoint at a time.</p></div><span class="helper-text">Browser-only · No real traffic</span></div>
-        <div class="simulator-layout">
-          <div class="simulator-panel"><div class="panel-header"><h2>Packet builder</h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8Zm-9 5 9 5 9-5M12 13v8"/></svg></div>
-            <div class="form-grid">
-              <label for="sourceSelect">Source<select id="sourceSelect"><option value="client">Client · 192.168.1.20</option><option value="web">Web Server · 10.0.1.10</option><option value="app">Application Server · 10.0.2.10</option></select></label>
-              <label for="destinationSelect">Destination<select id="destinationSelect"><option value="web">Web Server · 10.0.1.10</option><option value="app">Application Server · 10.0.2.10</option><option value="database">Database Server · 10.0.3.10</option><option value="client">Client · 192.168.1.20</option></select></label>
-              <label for="protocolSelect">Protocol<select id="protocolSelect"><option>TCP</option><option>UDP</option></select></label>
-              <label for="portSelect">Port<select id="portSelect"><option value="443">443 · HTTPS</option><option value="5000">5000 · App API</option><option value="3306">3306 · MySQL</option><option value="53">53 · DNS</option><option value="custom">Custom port</option></select></label>
+        <div class="trade-offs-grid">
+          <article class="trade-off-card">
+            <div class="trade-off-header">
+              <span class="arch-tag">MODE A</span>
+              <h3>Two-Tier (Client-Server)</h3>
             </div>
-            <div id="customPortWrap" class="custom-port-wrap" hidden><label for="customPort">Custom port</label><input id="customPort" type="number" min="1" max="65535" placeholder="e.g. 8080" aria-describedby="formError"></div>
-            <p id="formError" class="form-error" role="alert" hidden></p>
-            <div class="builder-actions"><button id="startSimulation" class="primary-button" type="button">Start simulation<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg></button><button id="cancelSimulation" class="secondary-button" type="button" disabled>Cancel</button></div>
-            <div class="quick-scenarios"><h3>Start with a question</h3><button type="button" data-scenario="allowed-web"><span>Can a client visit the website?</span><small>Client to web · :443</small></button><button type="button" data-scenario="blocked-db"><span>Can a client query private data?</span><small>Client to database · :3306</small></button><button type="button" data-scenario="allowed-app"><span>Can the application query data?</span><small>App to database · :3306</small></button></div>
+            <p class="trade-off-summary">Direct client connection to MySQL via TCP port 3306. Web and application layers are bypassed.</p>
+            
+            <div class="trade-off-section">
+              <h4 class="pro-title">Advantages (+)</h4>
+              <ul class="trade-off-list pros">
+                <li><strong>Ultra-Low Latency:</strong> Direct binary TCP socket yields ~0.51ms mean query time (~23x faster than Mode B).</li>
+                <li><strong>Zero Intermediate Overhead:</strong> No JSON serialization/deserialization or REST translation layers.</li>
+                <li><strong>Operational Simplicity:</strong> Fewer services and moving parts to orchestrate or troubleshoot.</li>
+              </ul>
+            </div>
+
+            <div class="trade-off-section">
+              <h4 class="con-title">Trade-offs & Constraints (-)</h4>
+              <ul class="trade-off-list cons">
+                <li><strong>Credentials on Client:</strong> Database credentials (<code>client_user</code>) must be provisioned on client endpoints.</li>
+                <li><strong>Exposed DB Port:</strong> Port 3306 must be accessible across the network, widening the database attack surface.</li>
+                <li><strong>No Central Business Logic:</strong> Validation and business rules are compiled into client binaries, hindering updates.</li>
+              </ul>
+            </div>
+
+            <div class="trade-off-realworld">
+              <b>Real-World Applications:</b>
+              <p>LAN Accounting Software (e.g., Tally ERP multi-user), Dental & Clinic Desktop POS workstations, hospital billing terminals talking to an on-premise SQL server.</p>
+            </div>
+          </article>
+
+          <article class="trade-off-card highlighted">
+            <div class="trade-off-header">
+              <span class="arch-tag primary">MODE B</span>
+              <h3>Three-Tier (Web-App-DB)</h3>
+            </div>
+            <p class="trade-off-summary">Segmented perimeter: Client → Nginx TLS (443) → FastAPI (5000) → MySQL (3306).</p>
+            
+            <div class="trade-off-section">
+              <h4 class="pro-title">Advantages (+)</h4>
+              <ul class="trade-off-list pros">
+                <li><strong>Defense-in-Depth:</strong> Database is in an isolated subnet (<code>10.0.3.0/24</code>) with zero direct client access.</li>
+                <li><strong>Centralized Logic & Security:</strong> Database schema, credentials, and business logic stay strictly on backend tiers.</li>
+                <li><strong>TLS Termination:</strong> Public communication is encrypted (TLS 1.3); private queries remain internal.</li>
+                <li><strong>Horizontal Scalability:</strong> Web and API tiers can be scaled independently behind load balancers.</li>
+              </ul>
+            </div>
+
+            <div class="trade-off-section">
+              <h4 class="con-title">Trade-offs & Constraints (-)</h4>
+              <ul class="trade-off-list cons">
+                <li><strong>Higher Latency:</strong> Multi-hop routing, TLS negotiation, and JSON serialization introduce ~11.8ms mean latency.</li>
+                <li><strong>System Complexity:</strong> Multiple container layers, routing rules, and reverse proxies to monitor and secure.</li>
+                <li><strong>Higher Resource Consumption:</strong> Higher memory and CPU footprint across multiple distinct services.</li>
+              </ul>
+            </div>
+
+            <div class="trade-off-realworld">
+              <b>Real-World Applications:</b>
+              <p>E-commerce platforms (Amazon, Shopify), Internet Banking portals, multi-tenant SaaS platforms requiring strict tenant data isolation.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="section-header"><h2>Core Network Primitives</h2><a class="text-link" href="#learn">Explore the fundamentals<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
+        <div class="explain-grid">
+          <article class="mini-card"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16M9 3 7 21M17 3l-2 18"/></svg><h3>IP Subnet <code>10.0.x.0/24</code></h3><p>Isolated broadcast domains. Each tier sits in its own /24 subnet, requiring the firewall router to forward packets.</p></article>
+          <article class="mini-card"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M15 12h1M9 3v18"/></svg><h3>Service Port <code>:3306, :443</code></h3><p>Specific TCP/UDP socket doors. In Mode A, port 3306 is open to clients; in Mode B, only port 443 is permitted.</p></article>
+          <article class="mini-card"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8Zm-9 5 9 5 9-5M12 13v8"/></svg><h3>Stateful Inspection</h3><p>Linux conntrack tracks TCP handshakes so ESTABLISHED response packets return automatically without opening inbound ports.</p></article>
+        </div>
+      </section>
+
+      <!-- 02. SIMULATE SECTION -->
+      <section id="simulate" class="page-section" aria-labelledby="simulateTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">PACKET PROBE & EXPERIMENT</p>
+            <h1 id="simulateTitle">Make a request. See the decision.</h1>
+            <p>Send an authentic packet probe across tiers. Inspect the firewall's stateful rule matching and measure network latency.</p>
           </div>
-          <div class="result-panel"><div class="result-top"><div><p class="eyebrow">PACKET TRACE</p><h2 id="resultTitle">Ready for a test packet</h2></div><span id="decisionBadge" class="decision-badge neutral" role="status">WAITING</span></div>
-            <div class="packet-route"><div class="route-labels"><span><small>From</small><span id="routeSource">CLIENT</span></span><span><small>To</small><span id="routeDestination">WEB SERVER</span></span><span><small>Port</small><span id="routePort">443</span></span></div></div>
-            <div id="traceList" class="trace-list" aria-live="polite" aria-label="Simulation checkpoints"><div class="trace-empty"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg><p>Your packet’s journey starts here.</p><small>Build a request or choose a question to inspect the policy in action.</small></div></div>
-            <div id="decisionExplain" class="decision-explain neutral"><span class="explain-symbol" aria-hidden="true">i</span><div><b>What happens next?</b><p>The firewall compares your packet with its rules. Each decision explains the matching rule and the intended tier-by-tier path.</p></div></div>
+          <div class="mode-badge-box">
+            <span class="helper-text">Current Architecture:</span>
+            <span class="mode-pill active" id="simModeBadge">MODE B (Three-Tier)</span>
+          </div>
+        </div>
+        <div class="simulator-layout">
+          <div class="simulator-panel">
+            <div class="panel-header">
+              <h2>Packet builder</h2>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8Zm-9 5 9 5 9-5M12 13v8"/></svg>
+            </div>
+            <div class="form-grid">
+              <label for="sourceSelect">Source
+                <select id="sourceSelect">
+                  <option value="client">Client · 192.168.1.20</option>
+                  <option value="web">Web Server · 10.0.1.10</option>
+                  <option value="app">Application Server · 10.0.2.10</option>
+                </select>
+              </label>
+              <label for="destinationSelect">Destination
+                <select id="destinationSelect">
+                  <option value="web">Web Server · 10.0.1.10</option>
+                  <option value="app">Application Server · 10.0.2.10</option>
+                  <option value="database">Database Server · 10.0.3.10</option>
+                  <option value="client">Client · 192.168.1.20</option>
+                </select>
+              </label>
+              <label for="protocolSelect">Protocol
+                <select id="protocolSelect">
+                  <option value="tcp">TCP</option>
+                  <option value="udp">UDP</option>
+                </select>
+              </label>
+              <label for="portSelect">Port
+                <select id="portSelect">
+                  <option value="443">443 · HTTPS (Web)</option>
+                  <option value="5000">5000 · App API (FastAPI)</option>
+                  <option value="3306">3306 · MySQL (Database)</option>
+                  <option value="53">53 · DNS (Resolver)</option>
+                  <option value="22">22 · SSH (Admin)</option>
+                  <option value="custom">Custom port</option>
+                </select>
+              </label>
+            </div>
+            <div id="customPortWrap" class="custom-port-wrap" hidden>
+              <label for="customPort">Custom port</label>
+              <input id="customPort" type="number" min="1" max="65535" placeholder="e.g. 8080" aria-describedby="formError">
+            </div>
+            <p id="formError" class="form-error" role="alert" hidden></p>
+            <div class="builder-actions">
+              <button id="startSimulation" class="primary-button" type="button">
+                <span>Run probe</span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>
+              </button>
+              <button id="cancelSimulation" class="secondary-button" type="button" disabled>Cancel</button>
+            </div>
+            <div class="quick-scenarios">
+              <h3>Preset Lab Inquiries</h3>
+              <button type="button" data-scenario="allowed-web">
+                <span>Can client visit the website?</span>
+                <small>Client → Web :443 · Allowed in Mode B</small>
+              </button>
+              <button type="button" data-scenario="direct-db">
+                <span>Can client query the database directly?</span>
+                <small>Client → Database :3306 · Allowed in Mode A, Blocked in Mode B</small>
+              </button>
+              <button type="button" data-scenario="allowed-app">
+                <span>Can application query private data?</span>
+                <small>App → Database :3306 · Allowed in Mode B</small>
+              </button>
+              <button type="button" data-scenario="udp-dns">
+                <span>Can client resolve DNS via UDP?</span>
+                <small>Client → Web :53 (UDP) · Protocol validation</small>
+              </button>
+            </div>
+          </div>
+          <div class="result-panel">
+            <div class="result-top">
+              <div>
+                <p class="eyebrow">FIREWALL DECISION & TRACE</p>
+                <h2 id="resultTitle">Ready for a test probe</h2>
+              </div>
+              <span id="decisionBadge" class="decision-badge neutral" role="status">WAITING</span>
+            </div>
+            <div class="packet-route">
+              <div class="route-labels">
+                <span><small>From</small><span id="routeSource">CLIENT (192.168.1.20)</span></span>
+                <span><small>To</small><span id="routeDestination">WEB SERVER (10.0.1.10)</span></span>
+                <span><small>Port & Proto</small><span id="routePort">443 / TCP</span></span>
+              </div>
+            </div>
+            <div id="traceList" class="trace-list" aria-live="polite" aria-label="Simulation checkpoints">
+              <div class="trace-empty">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+                <p>Your probe’s journey starts here.</p>
+                <small>Select an architecture mode and run a probe to inspect the firewall router in action.</small>
+              </div>
+            </div>
+            <div id="decisionExplain" class="decision-explain neutral">
+              <span class="explain-symbol" aria-hidden="true">i</span>
+              <div>
+                <b>Firewall Analysis</b>
+                <p id="decisionExplainText">The Alpine firewall router evaluates packets against the active FORWARD chain. Unmatched packets hit the default DROP policy.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      <!-- 03. RULES SECTION -->
       <section id="rules" class="page-section" aria-labelledby="rulesTitle">
-        <div class="section-intro"><div><p class="eyebrow">ACCESS POLICY</p><h1 id="rulesTitle">An explicit rule for every boundary.</h1><p>Read the source, destination and service together. An allowed path grants only the access a tier needs.</p></div><span class="helper-text">No matching rule? Deny by default.</span></div>
-        <div class="policy-editor"><div><h2>Experiment with the policy</h2><p id="policyWarning">Changing a decision changes the simulated firewall, and can open access the recommended baseline blocks. The Overview diagram always shows the recommended baseline; your edited simulation may differ.</p></div><button id="resetRules" class="secondary-button" type="button">Reset to baseline</button></div>
-        <p id="rulesStatus" class="rules-status" role="status" aria-live="polite" aria-atomic="true">Recommended baseline policy is active.</p>
-        <div class="table-wrap" tabindex="0" role="region" aria-label="Firewall rules; scroll horizontally on small screens" aria-describedby="policyWarning"><table><caption class="sr-only">Editable firewall access rules for the three-tier network</caption><thead><tr><th scope="col">Rule</th><th scope="col">Source</th><th scope="col">Destination</th><th scope="col">Port</th><th scope="col">Decision</th><th scope="col">Why?</th></tr></thead><tbody id="rulesTable"></tbody></table></div>
-        <div class="rule-callout"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><div><b>Least privilege in the recommended baseline</b><p>Servers can talk to the next tier only when they need to. The baseline never exposes the database directly to the client or web tier. This simplified model matches endpoints and port; TCP and UDP selections share the same rules.</p></div></div>
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">IPTABLES FORWARD CHAIN</p>
+            <h1 id="rulesTitle">An explicit rule for every boundary.</h1>
+            <p>Every cross-tier transit packet passes through the Alpine Linux router. Unmatched traffic is rejected by the default DROP policy.</p>
+          </div>
+          <span class="helper-text">Policy: iptables -P FORWARD DROP</span>
+        </div>
+        <div class="policy-editor">
+          <div>
+            <h2>Active Firewall Ruleset</h2>
+            <p id="policyWarning">Rules are applied to the real Alpine firewall router. In Two-Tier (Mode A), client access to port 3306 is permitted. In Three-Tier (Mode B), strict perimeter defense is enforced.</p>
+          </div>
+          <div class="policy-actions">
+            <button id="resetRules" class="secondary-button" type="button">Reset to Mode Baseline</button>
+          </div>
+        </div>
+        <p id="rulesStatus" class="rules-status" role="status" aria-live="polite" aria-atomic="true">Mode B baseline policy active.</p>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Firewall rules; scroll horizontally on small screens" aria-describedby="policyWarning">
+          <table>
+            <caption class="sr-only">Active iptables rules with packet counters and architectural justifications</caption>
+            <thead>
+              <tr>
+                <th scope="col">Rule</th>
+                <th scope="col">Source</th>
+                <th scope="col">Destination</th>
+                <th scope="col">Port</th>
+                <th scope="col">Decision</th>
+                <th scope="col">Packets</th>
+                <th scope="col">Architectural Rationale</th>
+              </tr>
+            </thead>
+            <tbody id="rulesTable"></tbody>
+          </table>
+        </div>
+        <div class="rule-callout">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>
+          <div>
+            <b>Principle of Least Privilege & Stateful Routing</b>
+            <p>The firewall accepts incoming connections only on explicitly whitelisted destination ports. Conntrack state table allows <code>ESTABLISHED,RELATED</code> reverse response packets to pass back to the requester automatically.</p>
+          </div>
+        </div>
       </section>
 
-      <section id="learn" class="page-section" aria-labelledby="learnTitle">
-        <div class="section-intro"><div><p class="eyebrow">THE FUNDAMENTALS</p><h1 id="learnTitle">Networking, in plain language.</h1><p>A few simple concepts make every packet trace easier to read. Build a mental model, then put it to the test.</p></div><a href="#simulate" class="text-link">Try an experiment<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div>
-        <div class="section-header"><h2 id="lessonWorkbenchTitle">Explore the packet, one idea at a time.</h2><span class="helper-text">Guided interactive lessons</span></div>
-        <div id="lessonWorkbench" class="lesson-workbench" role="region" aria-labelledby="lessonWorkbenchTitle"></div>
-        <div class="section-header"><h2 id="knowledgeCheckTitle">Knowledge check</h2><span class="helper-text">Put your mental model to the test</span></div>
-        <div id="learningLab" role="region" aria-labelledby="knowledgeCheckTitle"></div>
-        <div class="section-header"><h2 id="glossaryTitle">Networking glossary</h2><span class="helper-text">Open a term for a plain-language explanation</span></div>
-        <div id="learnGrid" class="learn-grid" role="region" aria-labelledby="glossaryTitle"></div>
-        <div class="architecture-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v9h9M9 6h9v9"/></svg><div><b>Why three tiers?</b><p>Separating the web, application and database responsibilities limits the blast radius of an attack and makes each layer easier to secure, scale and understand.</p></div></div>
+      <!-- 04. EVIDENCE SECTION (New Phase 4 Section) -->
+      <section id="evidence" class="page-section" aria-labelledby="evidenceTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">EMPIRICAL BENCHMARKS & LAB ARTIFACTS</p>
+            <h1 id="evidenceTitle">Authentic Laboratory Evidence</h1>
+            <p>Reproducible measurements captured from real Docker containers running on isolated subnets with an Alpine iptables firewall router.</p>
+          </div>
+          <span class="helper-text" id="evidenceTimestamp">Recorded: 2026-10-20 17:26 UTC</span>
+        </div>
+
+        <!-- 1. LATENCY BENCHMARK CHART -->
+        <article class="evidence-card">
+          <div class="evidence-header">
+            <div>
+              <h2>End-to-End Latency Benchmark (100 Iterations)</h2>
+              <p>Comparing 100 direct MySQL queries (Mode A) vs 100 HTTPS requests through Nginx → FastAPI → MySQL (Mode B).</p>
+            </div>
+            <span class="speedup-badge" id="speedupBadge">⚡ Mode A is 23.2x Faster</span>
+          </div>
+
+          <div class="latency-chart-container">
+            <svg class="latency-svg" id="latencyChart" viewBox="0 0 860 260" role="img" aria-label="Latency comparison chart between Mode A and Mode B">
+              <!-- SVG chart dynamically rendered by script.js -->
+            </svg>
+          </div>
+
+          <div class="benchmark-stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">Mode A (Two-Tier) Mean</span>
+              <strong class="stat-value mode-a-color" id="statModeAMean">0.51 ms</strong>
+              <small>Median: 0.26ms · P95: 0.37ms</small>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Mode B (Three-Tier) Mean</span>
+              <strong class="stat-value mode-b-color" id="statModeBMean">11.81 ms</strong>
+              <small>Median: 10.77ms · P95: 12.90ms</small>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Overhead Attribution</span>
+              <strong class="stat-value">+11.30 ms</strong>
+              <small>TLS handshake + JSON serialization + 2 hops</small>
+            </div>
+          </div>
+          <div class="evidence-note">
+            <b>Why does Mode B have higher latency?</b>
+            <p>Two-tier speaks the direct binary MySQL wire protocol across one router hop. Three-tier requires TLS 1.3 key exchange at Nginx, HTTP request parsing, JSON serialization in FastAPI, and an internal connection to MySQL across three distinct subnets. Enterprises intentionally accept this ~11ms latency overhead to achieve perimeter segmentation and prevent client tampering.</p>
+          </div>
+        </article>
+
+        <!-- 2. NMAP SECURITY AUDIT -->
+        <article class="evidence-card">
+          <div class="evidence-header">
+            <div>
+              <h2>Multi-Tier Nmap Security Scans</h2>
+              <p>Port discovery scans executed from <code>lab_client</code> (192.168.1.20) against Web, App, and Database tiers.</p>
+            </div>
+            <div class="nmap-tabs">
+              <button type="button" class="nmap-tab-btn active" id="btnNmapModeA" data-nmap="A">Mode A (Two-Tier)</button>
+              <button type="button" class="nmap-tab-btn" id="btnNmapModeB" data-nmap="B">Mode B (Three-Tier)</button>
+            </div>
+          </div>
+          <pre class="terminal-block" id="nmapOutputDisplay">Loading nmap audit scan...</pre>
+        </article>
+
+        <!-- 3. PACKET DISSECTION: PLAINTEXT SQL VS ENCRYPTED TLS -->
+        <article class="evidence-card">
+          <div class="evidence-header">
+            <div>
+              <h2>Packet Dissection: Cleartext SQL vs Encrypted TLS 1.3</h2>
+              <p>Hex and ASCII dissections captured by the firewall sniffer (<code>lab_sniffer</code>) on transit interfaces.</p>
+            </div>
+          </div>
+          <div class="dissection-grid">
+            <div class="dissection-col">
+              <div class="dissection-title mode-a-header">
+                <span>Mode A Transit (Cleartext SQL)</span>
+                <code>eth1 (client_net) → eth2 (db_net)</code>
+              </div>
+              <pre class="terminal-block code-plain" id="dissectionModeA">Loading Mode A packet capture...</pre>
+              <p class="dissection-caption">⚠️ In Mode A, SQL queries (<code>SELECT sku, name, price...</code>) and database responses travel in cleartext over the network, vulnerable to passive sniffing.</p>
+            </div>
+            <div class="dissection-col">
+              <div class="dissection-title mode-b-header">
+                <span>Mode B Ingress (Encrypted TLS 1.3)</span>
+                <code>eth1 (client_net) → eth4 (web_net)</code>
+              </div>
+              <pre class="terminal-block code-tls" id="dissectionModeB">Loading Mode B packet capture...</pre>
+              <p class="dissection-caption">🔒 In Mode B, payload data is encrypted via TLS 1.3 ciphertext. Network sniffers cannot observe customer data or query contents.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4. CAPTURE DOWNLOADS & WIRESHARK GUIDE -->
+        <article class="evidence-card">
+          <div class="evidence-header">
+            <div>
+              <h2>Wireshark Capture Artifacts (.pcap)</h2>
+              <p>Per-interface rotating packet captures recorded directly on the firewall router namespaces.</p>
+            </div>
+          </div>
+          <div class="pcap-grid" id="pcapGrid">
+            <!-- Dynamically populated -->
+            <div class="pcap-card">
+              <h4>live.pcap0</h4>
+              <p>Aggregated multi-tier router capture across all interfaces.</p>
+              <a class="secondary-button" href="http://127.0.0.1:8080/captures/live.pcap0" download target="_blank">Download .pcap</a>
+            </div>
+            <div class="pcap-card">
+              <h4>client.pcap0</h4>
+              <p>Traffic crossing client_net interface (192.168.1.254).</p>
+              <a class="secondary-button" href="http://127.0.0.1:8080/captures/client.pcap0" download target="_blank">Download .pcap</a>
+            </div>
+            <div class="pcap-card">
+              <h4>web.pcap0</h4>
+              <p>Traffic crossing web_net interface (10.0.1.254).</p>
+              <a class="secondary-button" href="http://127.0.0.1:8080/captures/web.pcap0" download target="_blank">Download .pcap</a>
+            </div>
+            <div class="pcap-card">
+              <h4>app.pcap0</h4>
+              <p>Traffic crossing app_net interface (10.0.2.254).</p>
+              <a class="secondary-button" href="http://127.0.0.1:8080/captures/app.pcap0" download target="_blank">Download .pcap</a>
+            </div>
+            <div class="pcap-card">
+              <h4>db.pcap0</h4>
+              <p>Traffic crossing db_net interface (10.0.3.254).</p>
+              <a class="secondary-button" href="http://127.0.0.1:8080/captures/db.pcap0" download target="_blank">Download .pcap</a>
+            </div>
+          </div>
+          <div class="wireshark-filters">
+            <b>Wireshark Filter Cheat-Sheet:</b>
+            <p><code>mysql</code> — Inspect SQL queries and handshake packets in Mode A.</p>
+            <p><code>tls.record.content_type == 23</code> — View encrypted TLS Application Data records in Mode B.</p>
+            <p><code>tcp.flags.syn == 1 && tcp.flags.ack == 0</code> — Filter for connection initiation SYN packets across tiers.</p>
+          </div>
+        </article>
       </section>
-      <footer><span>Network Workbench <span class="footer-divider">/</span> Secure 3-Tier Simulator</span><span>Built for learning. All packets stay in your browser.</span></footer>
+
+      <!-- 05. LEARN SECTION -->
+      <section id="learn" class="page-section" aria-labelledby="learnTitle">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">COMPUTER NETWORKING CURRICULUM</p>
+            <h1 id="learnTitle">Networking, in plain language.</h1>
+            <p>Core concepts connecting theoretical network syllabus topics with real application deployments and packet analysis.</p>
+          </div>
+          <a href="#simulate" class="text-link">Try an experiment<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+        </div>
+        
+        <div class="section-header">
+          <h2 id="lessonWorkbenchTitle">Curriculum Topic Explorations</h2>
+          <span class="helper-text">Interactive Syllabus Lessons</span>
+        </div>
+        <div id="lessonWorkbench" class="lesson-workbench" role="region" aria-labelledby="lessonWorkbenchTitle"></div>
+        
+        <div class="section-header">
+          <h2 id="knowledgeCheckTitle">Knowledge check</h2>
+          <span class="helper-text">Put your mental model to the test</span>
+        </div>
+        <div id="learningLab" role="region" aria-labelledby="knowledgeCheckTitle"></div>
+        
+        <div class="section-header">
+          <h2 id="glossaryTitle">Networking Syllabus Glossary</h2>
+          <span class="helper-text">Open a term for a comprehensive technical explanation</span>
+        </div>
+        <div id="learnGrid" class="learn-grid" role="region" aria-labelledby="glossaryTitle"></div>
+      </section>
+
+      <footer>
+        <span>Network Workbench v2 <span class="footer-divider">/</span> Two-Tier vs Three-Tier Network Lab</span>
+        <span id="footerModeStatus">Dual-Mode: Live Controller + Authentic Recorded Replay</span>
+      </footer>
     </main>
   </div>
   <script src="script.js"></script>

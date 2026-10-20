@@ -1,0 +1,49 @@
+=== NMAP AUDIT — MODE B ===
+Date: 2026-10-20 17:26:16Z
+Source: lab_client (192.168.1.20)
+
+--- Scan Target: 10.0.1.10 ---
+Starting Nmap 7.95 ( https://nmap.org ) at 2026-10-20 17:26 UTC
+Nmap scan report for 10.0.1.10
+Host is up (0.000072s latency).
+
+PORT     STATE    SERVICE
+22/tcp   filtered ssh
+80/tcp   filtered http
+443/tcp  open     https
+3306/tcp filtered mysql
+5000/tcp filtered upnp
+9099/tcp filtered unknown
+
+Nmap done: 1 IP address (1 host up) scanned in 1.27 seconds
+
+--- Scan Target: 10.0.2.10 ---
+Starting Nmap 7.95 ( https://nmap.org ) at 2026-10-20 17:26 UTC
+Nmap scan report for 10.0.2.10
+Host is up.
+
+PORT     STATE    SERVICE
+22/tcp   filtered ssh
+80/tcp   filtered http
+443/tcp  filtered https
+3306/tcp filtered mysql
+5000/tcp filtered upnp
+9099/tcp filtered unknown
+
+Nmap done: 1 IP address (1 host up) scanned in 3.07 seconds
+
+--- Scan Target: 10.0.3.10 ---
+Starting Nmap 7.95 ( https://nmap.org ) at 2026-10-20 17:26 UTC
+Nmap scan report for 10.0.3.10
+Host is up.
+
+PORT     STATE    SERVICE
+22/tcp   filtered ssh
+80/tcp   filtered http
+443/tcp  filtered https
+3306/tcp filtered mysql
+5000/tcp filtered upnp
+9099/tcp filtered unknown
+
+Nmap done: 1 IP address (1 host up) scanned in 3.10 seconds
+

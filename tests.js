@@ -187,6 +187,39 @@ async function checkRun() {
   assert.equal(evaluate('rules[2].decision'), 'DENY');
   assert.equal(get('traceList').children.length, 0);
   assert.match(get('resultTitle').textContent, /run again/);
-  console.log('tests-v4: policy editing, reset, explanations, snapshot/cancellation, rendering, quiz grading and hands-on lessons passed');
+
+  // Network Workbench v2 Architecture Mode & Evidence Verification
+  assert.ok(api.defaultModeARules, 'Mode A rules exported');
+  assert.equal(api.defaultModeARules[0].source, 'client');
+  assert.equal(api.defaultModeARules[0].destination, 'database');
+  assert.equal(api.defaultModeARules[0].port, '3306');
+  assert.equal(api.defaultModeARules[0].decision, 'ALLOW');
+
+  assert.ok(api.defaultModeBRules, 'Mode B rules exported');
+  assert.equal(api.defaultModeBRules[2].source, 'client');
+  assert.equal(api.defaultModeBRules[2].destination, 'database');
+  assert.equal(api.defaultModeBRules[2].port, '3306');
+  assert.equal(api.defaultModeBRules[2].decision, 'DENY');
+
+  // Verify Architecture Switch to Mode A (Two-Tier)
+  evaluate("switchArchitectureMode('A', false)");
+  assert.equal(evaluate('currentMode'), 'A');
+  assert.equal(evaluate('rules[0].decision'), 'ALLOW', 'Mode A allows client to database');
+
+  // Verify Architecture Switch to Mode B (Three-Tier)
+  evaluate("switchArchitectureMode('B', false)");
+  assert.equal(evaluate('currentMode'), 'B');
+  assert.equal(evaluate('rules[2].decision'), 'DENY', 'Mode B isolates database from client');
+
+  // Verify Evidence Viewers & Dissections
+  evaluate("renderEvidence()");
+  evaluate("renderNmapTab('A')");
+  assert.match(get('nmapOutputDisplay').textContent, /MODE A/);
+  evaluate("renderNmapTab('B')");
+  assert.match(get('nmapOutputDisplay').textContent, /MODE B/);
+  assert.match(get('dissectionModeA').textContent, /SELECT.*sku.*products/s);
+  assert.match(get('dissectionModeB').textContent, /TLSv1.3/);
+
+  console.log('Network Workbench v2 tests: Two-Tier (Mode A), Three-Tier (Mode B), Evidence Benchmarks, and all curriculum checks passed 100%!');
 }
 checkRun().catch(error => { console.error(error); process.exitCode = 1; });
