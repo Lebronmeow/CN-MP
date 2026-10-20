@@ -111,17 +111,61 @@ def cmd_status(args):
     res = exec_in_container("lab_firewall", ["iptables", "-L", "FORWARD", "-v", "-n", "--line-numbers"])
     print(res.stdout)
 
+def run_matrix_scans(mode_name):
+    """Scan between each tier and print a cross-tier matrix for the current mode."""
+    # Define test probes: (src_container, src_label, target_ip, target_port, target_label, expected_mode_a, expected_mode_b)
+    probes = [
+        # From Client
+        ("lab_client", "Client (192.168.1.20)", "10.0.3.10", 3306, "DB :3306", "ALLOW", "DENY"),
+        ("lab_client", "Client (192.168.1.20)", "10.0.1.10", 443,  "Web :443", "DENY",  "ALLOW"),
+        ("lab_client", "Client (192.168.1.20)", "10.0.2.10", 5000, "App :5000", "DENY", "DENY"),
+        ("lab_client", "Client (192.168.1.20)", "192.168.1.254", 9099, "FW :9099", "DENY", "DENY"),
+        # From Web
+        ("lab_web",    "Web (10.0.1.10)",      "10.0.2.10", 5000, "App :5000", "DENY",  "ALLOW"),
+        ("lab_web",    "Web (10.0.1.10)",      "10.0.3.10", 3306, "DB :3306",  "DENY",  "DENY"),
+        ("lab_web",    "Web (10.0.1.10)",      "192.168.1.20", 8080, "Client", "DENY",  "DENY"),
+        # From App
+        ("lab_app",    "App (10.0.2.10)",      "10.0.3.10", 3306, "DB :3306",  "DENY",  "ALLOW"),
+        ("lab_app",    "App (10.0.2.10)",      "10.0.1.10", 443,  "Web :443",  "DENY",  "DENY"),
+        # From DB
+        ("lab_db",     "DB (10.0.3.10)",       "10.0.2.10", 5000, "App :5000", "DENY",  "DENY"),
+        ("lab_db",     "DB (10.0.3.10)",       "192.168.1.20", 3306, "Client", "DENY",  "DENY"),
+    ]
+
+    print(f"\n+-----------------------------------------------------------------------------------------+")
+    print(f"| {mode_name:^87} |")
+    print(f"+-------------------------+---------------+----------+----------+-------------------------+")
+    print(f"| Source Tier             | Target Tier   | Expected | Observed | Verification Status     |")
+    print(f"+-------------------------+---------------+----------+----------+-------------------------+")
+
+    all_passed = True
+    for src, src_lbl, dst_ip, dst_port, dst_lbl, exp_a, exp_b in probes:
+        expected = exp_a if "mode a" in mode_name.lower() else exp_b
+        res = exec_in_container(src, ["nc", "-z", "-w", "1", dst_ip, str(dst_port)])
+        out = (res.stdout + res.stderr).lower()
+        # Nonzero exit code or no open message indicates filtered/denied
+        is_open = (res.returncode == 0) or ("succeeded" in out) or ("open" in out)
+        observed = "ALLOW" if is_open else "DENY"
+        passed = (observed == expected)
+        if not passed:
+            all_passed = False
+        badge = "[ PASS ]" if passed else "[ FAIL ]"
+        print(f"| {src_lbl:23} | {dst_lbl:13} | {expected:8} | {observed:8} | {badge:23} |")
+
+    print(f"+-------------------------+---------------+----------+----------+-------------------------+")
+    return all_passed
+
 def cmd_verify(args):
     """Run full network verification (ping, nc, nmap) in both Mode A and Mode B."""
     ensure_host_sysctls()
     print("\n" + "="*70)
-    print("     NETWORK WORKBENCH v2 — VERIFICATION SUITE")
+    print("     NETWORK WORKBENCH v2 — MULTI-TIER VERIFICATION SUITE")
     print("="*70)
 
     # 1. Verification under Mode A
     cmd_mode_a(args)
     time.sleep(1)
-    print("\n[TEST 1] Testing ICMP Ping from Client (192.168.1.20) to All Tiers in Mode A:")
+    print("\n[TEST 1] Testing ICMP Ping from Client (192.168.1.20) in Mode A:")
     for target_name, target_ip in [("Router", "192.168.1.254"), ("Web", "10.0.1.10"), ("App", "10.0.2.10"), ("DB", "10.0.3.10")]:
         res = exec_in_container("lab_client", ["ping", "-c", "2", "-W", "1", target_ip])
         loss = ("0% loss" in res.stdout or "0% packet loss" in res.stdout)
@@ -132,49 +176,29 @@ def cmd_verify(args):
     res_trace = exec_in_container("lab_client", ["traceroute", "-I", "-n", "-m", "3", "-w", "1", "10.0.3.10"])
     print(res_trace.stdout)
 
-    print("\n[TEST 2] Testing Port Connectivity (nc -zv) in Mode A:")
-    nc_tests_a = [
-        ("Client -> DB  :3306", ["nc", "-z", "-v", "-w", "2", "10.0.3.10", "3306"], "open"),
-        ("Client -> Web :443 ", ["nc", "-z", "-v", "-w", "2", "10.0.1.10", "443"], "closed/filtered"),
-        ("Client -> App :5000", ["nc", "-z", "-v", "-w", "2", "10.0.2.10", "5000"], "closed/filtered"),
-    ]
-    for desc, cmd, expected in nc_tests_a:
-        res = exec_in_container("lab_client", cmd)
-        out = (res.stdout + res.stderr).lower()
-        success = ("open" in out or "succeeded" in out) if expected == "open" else not ("open" in out or "succeeded" in out)
-        badge = "PASSED (MATCHES MODE A)" if success else "FAILED"
-        print(f"  -> {desc} [Expected: {expected:15}]: {badge}")
+    print("\n[TEST 1c] Security Audit: Verifying fw_daemon (:9099) is Non-Reachable from Client:")
+    res_audit = exec_in_container("lab_client", ["nmap", "-Pn", "-p", "9099", "192.168.1.254", "10.0.1.254", "10.0.2.254", "10.0.3.254"])
+    print(res_audit.stdout)
 
-    print("\n[TEST 3] Running Real nmap from Client against Database Server (10.0.3.10) in Mode A:")
-    res_nmap_a = exec_in_container("lab_client", ["nmap", "-Pn", "-p", "443,5000,3306,22", "10.0.3.10"])
-    print(res_nmap_a.stdout)
+    print("\n[TEST 2] Cross-Tier Isolation Matrix in Mode A (Two-Tier):")
+    run_matrix_scans("MODE A — Two-Tier (Client -> DB :3306 Allowed)")
 
     # 2. Verification under Mode B
     cmd_mode_b(args)
     time.sleep(1)
-    print("\n[TEST 4] Testing Port Connectivity (nc -zv) in Mode B:")
-    nc_tests_b = [
-        ("Client -> Web :443 ", ["nc", "-z", "-v", "-w", "2", "10.0.1.10", "443"], "open"),
-        ("Client -> DB  :3306", ["nc", "-z", "-v", "-w", "2", "10.0.3.10", "3306"], "filtered"),
-        ("Client -> App :5000", ["nc", "-z", "-v", "-w", "2", "10.0.2.10", "5000"], "filtered"),
-    ]
-    for desc, cmd, expected in nc_tests_b:
-        res = exec_in_container("lab_client", cmd)
-        out = (res.stdout + res.stderr).lower()
-        success = ("open" in out or "succeeded" in out) if expected == "open" else not ("open" in out or "succeeded" in out)
-        badge = "PASSED (MATCHES MODE B)" if success else "FAILED"
-        print(f"  -> {desc} [Expected: {expected:15}]: {badge}")
+    print("\n[TEST 3] Cross-Tier Isolation Matrix in Mode B (Three-Tier):")
+    run_matrix_scans("MODE B — Three-Tier (Web:443 -> App:5000 -> DB:3306 Allowed)")
 
-    print("\n[TEST 5] Running Real nmap from Client against Database Server (10.0.3.10) in Mode B:")
+    print("\n[TEST 4] Real nmap from Client against Database Server (10.0.3.10) in Mode B:")
     res_nmap_b_db = exec_in_container("lab_client", ["nmap", "-Pn", "-p", "443,5000,3306,22", "10.0.3.10"])
     print(res_nmap_b_db.stdout)
 
-    print("\n[TEST 6] Running Real nmap from Client against Web Server (10.0.1.10) in Mode B:")
+    print("\n[TEST 5] Real nmap from Client against Web Server (10.0.1.10) in Mode B:")
     res_nmap_b_web = exec_in_container("lab_client", ["nmap", "-Pn", "-p", "443,5000,3306,22", "10.0.1.10"])
     print(res_nmap_b_web.stdout)
 
     print("\n" + "="*70)
-    print("     VERIFICATION COMPLETE: EVIDENCE MATCHES SPECIFICATION")
+    print("     ALL VERIFICATION CHECKS COMPLETED")
     print("="*70)
 
 def main():

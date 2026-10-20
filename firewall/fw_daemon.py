@@ -3,21 +3,23 @@
 Firewall Control Daemon
 Runs inside the firewall container to provide restricted, safe management
 without granting the controller container unrestricted Docker socket access.
-Listens on Unix Domain Socket /var/run/firewall/fw.sock and localhost HTTP.
+Listens on internal management interface and/or Unix Domain Socket /var/run/firewall/fw.sock.
+Requires authentication token via X-FW-Token or Authorization: Bearer <token>.
 """
 
 import json
 import os
-import re
 import subprocess
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import socketserver
 
 CURRENT_MODE = "A"
-ALLOWED_MODES = {"A": "/opt/firewall/rules/mode-a.sh",
-                 "B": "/opt/firewall/rules/mode-b.sh",
-                 "custom": "/opt/firewall/rules/mode-custom.sh"}
+ALLOWED_MODES = {
+    "A": "/opt/firewall/rules/mode-a.sh",
+    "B": "/opt/firewall/rules/mode-b.sh",
+    "custom": "/opt/firewall/rules/mode-custom.sh"
+}
+FW_TOKEN = os.environ.get("FW_TOKEN", "lab_firewall_secret_token_2026")
 
 class FirewallHandler(BaseHTTPRequestHandler):
     def _send_json(self, status_code, data):
@@ -26,8 +28,25 @@ class FirewallHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data, indent=2).encode("utf-8"))
 
+    def _verify_auth(self):
+        token_header = self.headers.get("X-FW-Token")
+        auth_header = self.headers.get("Authorization", "")
+        bearer_token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
+        provided = token_header or bearer_token
+        if provided != FW_TOKEN:
+            self._send_json(401, {"error": "Unauthorized: Invalid or missing firewall control token"})
+            return False
+        return True
+
     def do_GET(self):
         global CURRENT_MODE
+        if self.path == "/health":
+            self._send_json(200, {"status": "healthy"})
+            return
+
+        if not self._verify_auth():
+            return
+
         if self.path == "/status":
             rules = self._get_parsed_rules()
             self._send_json(200, {
@@ -42,13 +61,14 @@ class FirewallHandler(BaseHTTPRequestHandler):
                 "mode": CURRENT_MODE,
                 "rules": rules
             })
-        elif self.path == "/health":
-            self._send_json(200, {"status": "healthy"})
         else:
             self._send_json(404, {"error": "Not found"})
 
     def do_POST(self):
         global CURRENT_MODE
+        if not self._verify_auth():
+            return
+
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
         try:
@@ -77,8 +97,7 @@ class FirewallHandler(BaseHTTPRequestHandler):
             if not isinstance(rules_list, list):
                 self._send_json(400, {"error": "rules must be a list"})
                 return
-            
-            # Validate each rule strictly
+
             valid_ips = {"192.168.1.20", "10.0.1.10", "10.0.2.10", "10.0.3.10", "0.0.0.0/0", "any"}
             valid_ports = {443, 5000, 3306, 22, 53, 80}
             valid_actions = {"ACCEPT", "DROP", "REJECT"}
@@ -121,10 +140,8 @@ class FirewallHandler(BaseHTTPRequestHandler):
                 cmd += ["-j", action]
                 generated_commands.append(cmd)
 
-            # Apply: base custom flush first
             subprocess.run(["/bin/bash", "/opt/firewall/rules/mode-custom.sh"], check=True)
             for cmd in generated_commands:
-                # Insert custom rules before default drop (rule 3)
                 subprocess.run(["iptables", "-I", "FORWARD", "3"] + cmd[3:], check=True)
 
             CURRENT_MODE = "custom"
@@ -143,7 +160,6 @@ class FirewallHandler(BaseHTTPRequestHandler):
             return []
         lines = res.stdout.strip().splitlines()
         rules = []
-        # Header is usually lines 0 and 1
         for line in lines[2:]:
             parts = line.split()
             if len(parts) >= 9:
@@ -164,15 +180,20 @@ class FirewallHandler(BaseHTTPRequestHandler):
         return rules
 
     def log_message(self, format, *args):
-        # Silence standard HTTP access logging to stderr
         return
 
 def run_server():
     os.makedirs("/var/run/firewall", exist_ok=True)
-    server_address = ("0.0.0.0", 9099)
-    httpd = HTTPServer(server_address, FirewallHandler)
-    print(f"[firewall-daemon] Internal control daemon listening on port 9099...")
-    httpd.serve_forever()
+    # Bind to management IP or 127.0.0.1 (not client reachable)
+    bind_ip = os.environ.get("FW_BIND_IP", "172.28.0.254")
+    try:
+        httpd = HTTPServer((bind_ip, 9099), FirewallHandler)
+        print(f"[firewall-daemon] Internal control daemon listening on {bind_ip}:9099...")
+        httpd.serve_forever()
+    except Exception as e:
+        print(f"[firewall-daemon] Fallback binding to 127.0.0.1:9099 ({e})")
+        httpd = HTTPServer(("127.0.0.1", 9099), FirewallHandler)
+        httpd.serve_forever()
 
 if __name__ == "__main__":
     run_server()

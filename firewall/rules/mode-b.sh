@@ -7,39 +7,59 @@ set -e
 
 echo "[firewall] Applying Mode B (Three-Tier) firewall rules..."
 
-# Flush existing FORWARD rules and zero counters
+# -------------------------------------------------------------
+# 1. INPUT Chain Policy (Protection of the Firewall Router itself)
+# -------------------------------------------------------------
+iptables -P INPUT DROP
+iptables -F INPUT
+
+# Allow loopback traffic
+iptables -A INPUT -i lo -j ACCEPT
+
+# Allow established & related return packets
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Allow ICMP echo-request, time-exceeded, and unreachable (required for traceroute & ping)
+iptables -A INPUT -p icmp -j ACCEPT
+
+# Allow control daemon ONLY from dedicated management subnet (172.28.0.0/24)
+iptables -A INPUT -s 172.28.0.0/24 -p tcp --dport 9099 -j ACCEPT
+
+# Rate-limited logging for denied input packets
+iptables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "[FW-INPUT-DROP] " --log-level 4
+iptables -A INPUT -j DROP
+
+# -------------------------------------------------------------
+# 2. FORWARD Chain Policy (Inter-Tier Transit Filtering)
+# -------------------------------------------------------------
 iptables -F FORWARD
 iptables -Z FORWARD
-
-# Set default policy for FORWARD chain to DROP
 iptables -P FORWARD DROP
 
-# 1. Stateful inspection: Allow ESTABLISHED and RELATED return traffic
+# Stateful inspection
 iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
-# 2. Allow ICMP echo request/reply across tiers for network diagnostics and latency probing
+# Allow ICMP across tiers
 iptables -A FORWARD -p icmp -j ACCEPT
 
-# 3. Tier 1 entry: Allow Client (192.168.1.20) to reach Nginx Web Server (10.0.1.10) on HTTPS :443
+# Tier 1: Client -> Web Server (HTTPS :443)
 iptables -A FORWARD -s 192.168.1.20 -d 10.0.1.10 -p tcp --dport 443 -j ACCEPT
 
-# 4. Tier 2 internal hop: Allow Web Server (10.0.1.10) to reach FastAPI App Server (10.0.2.10) on port 5000
+# Tier 2: Web Server -> FastAPI App Server (:5000)
 iptables -A FORWARD -s 10.0.1.10 -d 10.0.2.10 -p tcp --dport 5000 -j ACCEPT
 
-# 5. Tier 3 internal hop: Allow FastAPI App Server (10.0.2.10) to query Database Server (10.0.3.10) on MySQL :3306
+# Tier 3: FastAPI App Server -> Database Server (:3306)
 iptables -A FORWARD -s 10.0.2.10 -d 10.0.3.10 -p tcp --dport 3306 -j ACCEPT
 
-# 6. Explicitly drop any direct bypass attempt from Client to DB (:3306) with custom log prefix
+# Explicit logging and drop for direct database bypass from client
 iptables -A FORWARD -s 192.168.1.20 -d 10.0.3.10 -p tcp --dport 3306 -j LOG --log-prefix "[FW-BLOCKED-CLIENT-DB] " --log-level 4
 iptables -A FORWARD -s 192.168.1.20 -d 10.0.3.10 -p tcp --dport 3306 -j DROP
 
-# 7. Explicitly drop any direct bypass attempt from Client to App (:5000)
+# Explicit drop for direct app tier bypass from client
 iptables -A FORWARD -s 192.168.1.20 -d 10.0.2.10 -p tcp --dport 5000 -j DROP
 
-# 8. Rate-limited logging for other denied packets
+# Rate-limited logging for other denied transit packets
 iptables -A FORWARD -m limit --limit 5/min -j LOG --log-prefix "[FW-DROP-B] " --log-level 4
-
-# 9. Default drop for all remaining forwarded traffic
 iptables -A FORWARD -j DROP
 
-echo "[firewall] Mode B rules active. Strict three-tier pipeline enforced."
+echo "[firewall] Mode B rules active. Strict three-tier pipeline enforced. INPUT default DROP active."
