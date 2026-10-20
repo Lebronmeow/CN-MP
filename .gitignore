@@ -1,0 +1,30 @@
+# Lab captures
+captures/*.pcap
+captures/*.pcap*
+!captures/.gitkeep
+
+# Environment and secrets
+.env
+*.env.local
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+env/
+venv/
+
+# Node caches
+node_modules/
+npm-debug.log*
+
+# Database & runtime logs
+*.db
+!evidence/*.json
+*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db

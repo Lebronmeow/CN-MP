@@ -1,0 +1,19 @@
+{
+  "name": "network-workbench-v2",
+  "version": "2.0.0",
+  "description": "Network Workbench v2 — Real Two-Tier vs Three-Tier Network Lab",
+  "scripts": {
+    "test": "node tests.js"
+  },
+  "keywords": [
+    "computer-networks",
+    "two-tier",
+    "three-tier",
+    "firewall",
+    "iptables",
+    "docker",
+    "wireshark"
+  ],
+  "author": "",
+  "license": "MIT"
+}
