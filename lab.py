@@ -78,6 +78,7 @@ def cmd_stop(args):
 
 def cmd_mode_a(args):
     """Switch firewall to Mode A (Two-Tier direct client-database)."""
+    ensure_host_sysctls()
     print("\n>>> Switching to MODE A (Two-Tier Architecture)...")
     res = exec_in_container("lab_firewall", ["/bin/bash", "/opt/firewall/rules/mode-a.sh"])
     print(res.stdout)
@@ -86,6 +87,7 @@ def cmd_mode_a(args):
 
 def cmd_mode_b(args):
     """Switch firewall to Mode B (Three-Tier segmented)."""
+    ensure_host_sysctls()
     print("\n>>> Switching to MODE B (Three-Tier Architecture)...")
     res = exec_in_container("lab_firewall", ["/bin/bash", "/opt/firewall/rules/mode-b.sh"])
     print(res.stdout)
@@ -94,6 +96,7 @@ def cmd_mode_b(args):
 
 def cmd_mode_custom(args):
     """Switch firewall to Mode Custom."""
+    ensure_host_sysctls()
     print("\n>>> Switching to MODE Custom...")
     res = exec_in_container("lab_firewall", ["/bin/bash", "/opt/firewall/rules/mode-custom.sh"])
     print(res.stdout)
@@ -139,6 +142,10 @@ def run_matrix_scans(mode_name):
         ("lab_client", "Client (192.168.1.20)", "10.0.1.10", 443,  "Web :443", "DENY",  "ALLOW"),
         ("lab_client", "Client (192.168.1.20)", "10.0.2.10", 5000, "App :5000", "DENY", "DENY"),
         ("lab_client", "Client (192.168.1.20)", "192.168.1.254", 9099, "FW :9099", "DENY", "DENY"),
+        # Inter-tier ICMP diagnostics from Client
+        ("lab_client", "Client (192.168.1.20)", "10.0.3.10", "ICMP", "DB Ping", "ALLOW", "DENY"),
+        ("lab_client", "Client (192.168.1.20)", "10.0.1.10", "ICMP", "Web Ping", "DENY", "ALLOW"),
+        ("lab_client", "Client (192.168.1.20)", "10.0.2.10", "ICMP", "App Ping", "DENY", "DENY"),
         # From Web
         ("lab_web",    "Web (10.0.1.10)",      "10.0.2.10", 5000, "App :5000", "DENY",  "ALLOW"),
         ("lab_web",    "Web (10.0.1.10)",      "10.0.3.10", 3306, "DB :3306",  "DENY",  "DENY"),
@@ -160,10 +167,17 @@ def run_matrix_scans(mode_name):
     all_passed = True
     for src, src_lbl, dst_ip, dst_port, dst_lbl, exp_a, exp_b in probes:
         expected = exp_a if "mode a" in mode_name.lower() else exp_b
-        res = exec_in_container(src, ["nc", "-z", "-w", "1", dst_ip, str(dst_port)])
-        out = (res.stdout + res.stderr).lower()
-        # Nonzero exit code or no open message indicates filtered/denied
-        is_open = (res.returncode == 0) or ("succeeded" in out) or ("open" in out)
+        if dst_port == "ICMP":
+            res = exec_in_container(src, ["ping", "-c", "1", "-W", "1", dst_ip])
+            is_open = (res.returncode == 0) and ("0% packet loss" in res.stdout or "0% loss" in res.stdout)
+        elif src == "lab_db":
+            res = exec_in_container(src, ["bash", "-c", f"timeout 1 bash -c 'cat < /dev/null > /dev/tcp/{dst_ip}/{dst_port}' 2>/dev/null"])
+            is_open = (res.returncode == 0)
+        else:
+            res = exec_in_container(src, ["nc", "-z", "-w", "1", dst_ip, str(dst_port)])
+            out = (res.stdout + res.stderr).lower()
+            is_open = (res.returncode == 0) or ("succeeded" in out) or ("open" in out)
+
         observed = "ALLOW" if is_open else "DENY"
         passed = (observed == expected)
         if not passed:
@@ -185,10 +199,13 @@ def cmd_verify(args):
     cmd_mode_a(args)
     time.sleep(1)
     print("\n[TEST 1] Testing ICMP Ping from Client (192.168.1.20) in Mode A:")
-    for target_name, target_ip in [("Router", "192.168.1.254"), ("Web", "10.0.1.10"), ("App", "10.0.2.10"), ("DB", "10.0.3.10")]:
+    for target_name, target_ip, should_succeed in [("Router", "192.168.1.254", True), ("Web", "10.0.1.10", False), ("App", "10.0.2.10", False), ("DB", "10.0.3.10", True)]:
         res = exec_in_container("lab_client", ["ping", "-c", "2", "-W", "1", target_ip])
         loss = ("0% loss" in res.stdout or "0% packet loss" in res.stdout)
-        status = "PASSED (0% packet loss)" if loss else "FAILED"
+        if should_succeed:
+            status = "PASSED (Echo Reply received)" if loss else "FAILED (Packet lost)"
+        else:
+            status = "PASSED (Blocked by firewall as expected)" if not loss else "FAILED (Ping was allowed!)"
         print(f"  -> Ping {target_name:7} ({target_ip:14}): {status}")
 
     print("\n[TEST 1b] Testing Traceroute from Client to Database Server (10.0.3.10):")
@@ -220,6 +237,14 @@ def cmd_verify(args):
     print("     ALL VERIFICATION CHECKS COMPLETED")
     print("="*70)
 
+def cmd_controller(args):
+    """Launch the Controller API on http://127.0.0.1:8080."""
+    import uvicorn
+    sys.path.insert(0, BASE_DIR)
+    from controller.main import app
+    print("=== Starting Network Workbench v2 Controller on http://127.0.0.1:8080 ===")
+    uvicorn.run(app, host="127.0.0.1", port=8080, log_level="info")
+
 def main():
     parser = argparse.ArgumentParser(description="Network Workbench v2 Lab Orchestrator")
     subparsers = parser.add_subparsers(dest="command", help="Lab commands")
@@ -231,6 +256,7 @@ def main():
     subparsers.add_parser("mode-custom", help="Switch firewall to Mode Custom")
     subparsers.add_parser("status", help="Show lab status and firewall counters")
     subparsers.add_parser("verify", help="Run ping, nc, and nmap verification across modes")
+    subparsers.add_parser("controller", help="Launch the Controller API on http://127.0.0.1:8080")
 
     p_cli = subparsers.add_parser("client-cli", help="Execute Mode A ShopLedger CLI client command")
     p_cli.add_argument("extra_args", nargs=argparse.REMAINDER, help="Arguments passed directly to shopledger_cli.py")
@@ -250,6 +276,7 @@ def main():
         "mode-custom": cmd_mode_custom,
         "status": cmd_status,
         "verify": cmd_verify,
+        "controller": cmd_controller,
         "client-cli": cmd_client_cli,
         "client-ui": cmd_client_ui
     }

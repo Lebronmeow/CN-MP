@@ -22,8 +22,11 @@ iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 # Allow ICMP echo-request, time-exceeded, and unreachable (required for traceroute & ping)
 iptables -A INPUT -p icmp -j ACCEPT
 
-# Allow control daemon ONLY from dedicated management subnet (172.28.0.0/24)
-iptables -A INPUT -s 172.28.0.0/24 -p tcp --dport 9099 -j ACCEPT
+# Allow control daemon ONLY from dedicated management interface on mgmt subnet (172.28.0.0/24)
+MGMT_IF=$(ip -4 route list match 172.28.0.0/24 2>/dev/null | awk '{print $3}' | head -n1)
+if [ -n "$MGMT_IF" ]; then
+  iptables -A INPUT -i "$MGMT_IF" -s 172.28.0.0/24 -p tcp --dport 9099 -j ACCEPT
+fi
 
 # Rate-limited logging for denied input packets
 iptables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "[FW-INPUT-DROP] " --log-level 4
@@ -39,8 +42,10 @@ iptables -P FORWARD DROP
 # Stateful inspection
 iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
-# Allow ICMP across tiers
-iptables -A FORWARD -p icmp -j ACCEPT
+# Segmented ICMP: Allow ICMP along authorized tier pipelines only (Client->Web, Web->App, App->DB)
+iptables -A FORWARD -s 192.168.1.20 -d 10.0.1.10 -p icmp -j ACCEPT
+iptables -A FORWARD -s 10.0.1.10 -d 10.0.2.10 -p icmp -j ACCEPT
+iptables -A FORWARD -s 10.0.2.10 -d 10.0.3.10 -p icmp -j ACCEPT
 
 # Tier 1: Client -> Web Server (HTTPS :443)
 iptables -A FORWARD -s 192.168.1.20 -d 10.0.1.10 -p tcp --dport 443 -j ACCEPT

@@ -12,7 +12,11 @@ iptables -F INPUT
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A INPUT -p icmp -j ACCEPT
-iptables -A INPUT -s 172.28.0.0/24 -p tcp --dport 9099 -j ACCEPT
+# Allow control daemon ONLY from dedicated management interface on mgmt subnet (172.28.0.0/24)
+MGMT_IF=$(ip -4 route list match 172.28.0.0/24 2>/dev/null | awk '{print $3}' | head -n1)
+if [ -n "$MGMT_IF" ]; then
+  iptables -A INPUT -i "$MGMT_IF" -s 172.28.0.0/24 -p tcp --dport 9099 -j ACCEPT
+fi
 iptables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "[FW-INPUT-DROP] " --log-level 4
 iptables -A INPUT -j DROP
 
