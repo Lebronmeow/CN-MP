@@ -20,15 +20,17 @@ def get_docker_cmd():
         return ["docker", "compose"]
     elif shutil.which("wsl"):
         # Run via WSL
-        return ["wsl", "-d", "Ubuntu", "-e", "docker", "compose"]
+        wsl_bin = shutil.which("wsl")
+        return [wsl_bin, "-d", "Ubuntu", "--", "docker", "compose"]
     else:
         print("[!] Error: neither docker nor wsl was found in PATH.")
         sys.exit(1)
 
 def run_wsl_root(cmd):
     """Run a root command in WSL if WSL is available."""
-    if shutil.which("wsl"):
-        subprocess.run(["wsl", "-u", "root", "-d", "Ubuntu", "-e", "bash", "-c", cmd], check=False)
+    wsl_bin = shutil.which("wsl")
+    if wsl_bin:
+        subprocess.run([wsl_bin, "-u", "root", "-d", "Ubuntu", "--", "bash", "-c", cmd], check=False, stdin=subprocess.DEVNULL)
 
 def ensure_host_sysctls():
     """Ensure Linux host bridge filter doesn't drop inter-tier internal packets."""
@@ -40,24 +42,24 @@ def run_compose(args):
     docker_cmd = get_docker_cmd()
     
     # Run in BASE_DIR context
-    if docker_cmd[0] == "wsl":
+    if "wsl" in docker_cmd[0].lower():
         # Convert path to WSL mount
         wsl_dir = BASE_DIR.replace("\\", "/").replace("F:", "/mnt/f").replace("C:", "/mnt/c")
-        full_cmd = ["wsl", "-d", "Ubuntu", "-e", "docker", "compose", "-f", f"{wsl_dir}/docker-compose.yml"] + args
+        full_cmd = [docker_cmd[0], "-d", "Ubuntu", "--", "docker", "compose", "-f", f"{wsl_dir}/docker-compose.yml"] + args
     else:
         full_cmd = docker_cmd + ["-f", os.path.join(BASE_DIR, "docker-compose.yml")] + args
         
     print(f">> {' '.join(full_cmd)}")
-    return subprocess.run(full_cmd)
+    return subprocess.run(full_cmd, stdin=subprocess.DEVNULL)
 
 def exec_in_container(container, cmd):
     """Execute a command inside a specific container."""
     docker_cmd = get_docker_cmd()
-    if docker_cmd[0] == "wsl":
-        full_cmd = ["wsl", "-d", "Ubuntu", "-e", "docker", "exec", container] + cmd
+    if "wsl" in docker_cmd[0].lower():
+        full_cmd = [docker_cmd[0], "-d", "Ubuntu", "--", "docker", "exec", container] + cmd
     else:
         full_cmd = ["docker", "exec", container] + cmd
-    return subprocess.run(full_cmd, capture_output=True, text=True)
+    return subprocess.run(full_cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL)
 
 def cmd_start(args):
     """Build and start the network lab."""
@@ -105,10 +107,10 @@ def cmd_status(args):
     """Display container status and active firewall rules."""
     print("\n=== Active Containers ===")
     docker_cmd = get_docker_cmd()
-    if docker_cmd[0] == "wsl":
-        subprocess.run(["wsl", "-d", "Ubuntu", "-e", "docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"])
+    if "wsl" in docker_cmd[0].lower():
+        subprocess.run([docker_cmd[0], "-d", "Ubuntu", "--", "docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"], stdin=subprocess.DEVNULL)
     else:
-        subprocess.run(["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"])
+        subprocess.run(["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"], stdin=subprocess.DEVNULL)
 
     print("\n=== Firewall FORWARD Policy & Rule Counters ===")
     res = exec_in_container("lab_firewall", ["iptables", "-L", "FORWARD", "-v", "-n", "--line-numbers"])
@@ -118,8 +120,8 @@ def cmd_client_cli(args):
     """Run ShopLedger Mode A CLI client inside lab_client container."""
     docker_cmd = get_docker_cmd()
     sub_args = args.extra_args if hasattr(args, "extra_args") and args.extra_args else []
-    if docker_cmd[0] == "wsl":
-        full_cmd = ["wsl", "-d", "Ubuntu", "-e", "docker", "exec", "lab_client", "python3", "/app/shopledger_cli.py"] + sub_args
+    if "wsl" in docker_cmd[0].lower():
+        full_cmd = [docker_cmd[0], "-d", "Ubuntu", "--", "docker", "exec", "lab_client", "python3", "/app/shopledger_cli.py"] + sub_args
     else:
         full_cmd = ["docker", "exec", "lab_client", "python3", "/app/shopledger_cli.py"] + sub_args
     subprocess.run(full_cmd)
@@ -127,8 +129,8 @@ def cmd_client_cli(args):
 def cmd_client_ui(args):
     """Run ShopLedger Mode A Textual TUI client inside lab_client container."""
     docker_cmd = get_docker_cmd()
-    if docker_cmd[0] == "wsl":
-        full_cmd = ["wsl", "-d", "Ubuntu", "-e", "docker", "exec", "-it", "lab_client", "python3", "/app/shopledger_ui.py"]
+    if "wsl" in docker_cmd[0].lower():
+        full_cmd = [docker_cmd[0], "-d", "Ubuntu", "--", "docker", "exec", "-it", "lab_client", "python3", "/app/shopledger_ui.py"]
     else:
         full_cmd = ["docker", "exec", "-it", "lab_client", "python3", "/app/shopledger_ui.py"]
     subprocess.run(full_cmd)

@@ -38,6 +38,29 @@ class FirewallHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _detect_mode(self):
+        global CURRENT_MODE
+        try:
+            if os.path.exists("/var/run/firewall/mode"):
+                with open("/var/run/firewall/mode", "r") as f:
+                    m = f.read().strip()
+                    if m in ALLOWED_MODES:
+                        CURRENT_MODE = m
+                        return CURRENT_MODE
+        except Exception:
+            pass
+        try:
+            res = subprocess.run(["iptables", "-S", "FORWARD"], capture_output=True, text=True, timeout=2)
+            if "[FW-DROP-B]" in res.stdout:
+                CURRENT_MODE = "B"
+            elif "[FW-DROP-A]" in res.stdout:
+                CURRENT_MODE = "A"
+            elif "[FW-CUSTOM-DROP]" in res.stdout:
+                CURRENT_MODE = "custom"
+        except Exception:
+            pass
+        return CURRENT_MODE
+
     def do_GET(self):
         global CURRENT_MODE
         if self.path == "/health":
@@ -46,6 +69,8 @@ class FirewallHandler(BaseHTTPRequestHandler):
 
         if not self._verify_auth():
             return
+
+        self._detect_mode()
 
         if self.path == "/status":
             rules = self._get_parsed_rules()

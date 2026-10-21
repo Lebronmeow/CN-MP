@@ -137,7 +137,7 @@ def get_docker_cmd():
     if shutil.which("docker"):
         return ["docker"]
     elif shutil.which("wsl"):
-        return ["wsl", "-d", "Ubuntu", "-e", "docker"]
+        return ["wsl.exe", "-d", "Ubuntu", "--", "docker"]
     else:
         raise RuntimeError("Neither docker nor wsl found in PATH.")
 
@@ -146,7 +146,7 @@ def exec_container(container_name: str, cmd_list: List[str], timeout: int = 15) 
     """Execute a command list in a container without shell interpolation."""
     base_docker = get_docker_cmd()
     full_cmd = base_docker + ["exec", container_name] + cmd_list
-    return subprocess.run(full_cmd, capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(full_cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
 
 
 def query_fw_daemon(method: str, path: str, payload: Optional[dict] = None) -> dict:
@@ -185,7 +185,7 @@ def get_container_statuses() -> dict:
             "--filter", "name=lab_",
             "--format", "{{.Names}}\t{{.Status}}\t{{.State}}"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=15, stdin=subprocess.DEVNULL)
         statuses = {}
         for line in res.stdout.strip().splitlines():
             parts = line.split("\t")
@@ -234,6 +234,9 @@ def health_check():
     return {"status": "ok", "service": "Network Workbench v2 Controller"}
 
 
+_STATUS_CACHE = {"data": None, "ts": 0}
+_RULES_CACHE = {"data": None, "ts": 0}
+
 @app.get("/status")
 def get_status():
     """
@@ -247,7 +250,14 @@ def get_status():
        (`mgmt_net`, interface 172.28.0.254:9099) using a pre-shared bearer token (`X-FW-Token`).
        This ensures telemetry collection is physically isolated from the tenant data tiers.
     """
-    fw_status = query_fw_daemon("GET", "/status")
+    now = time.time()
+    if _STATUS_CACHE["data"] is not None and (now - _STATUS_CACHE["ts"]) < 1.5:
+        return _STATUS_CACHE["data"]
+
+    try:
+        fw_status = query_fw_daemon("GET", "/status")
+    except Exception:
+        fw_status = {"mode": "unknown", "rules_count": 0, "ip_forward": 1}
     containers = get_container_statuses()
 
     mode = fw_status.get("mode", "unknown")
@@ -257,29 +267,45 @@ def get_status():
         "custom": "Custom User-Defined Ruleset"
     }
 
-    return {
+    result = {
         "mode": mode,
         "description": mode_descriptions.get(mode, "Custom Configuration"),
         "rules_count": fw_status.get("rules_count", 0),
         "containers": containers,
         "ip_forward": fw_status.get("ip_forward", 1)
     }
+    _STATUS_CACHE["data"] = result
+    _STATUS_CACHE["ts"] = now
+    return result
 
 
 @app.get("/rules")
 def get_rules():
     """Returns parsed iptables rules with per-rule packet and byte counters, plus raw iptables -S lines."""
-    fw_rules = query_fw_daemon("GET", "/rules")
+    now = time.time()
+    if _RULES_CACHE["data"] is not None and (now - _RULES_CACHE["ts"]) < 1.5:
+        return _RULES_CACHE["data"]
+
+    try:
+        fw_rules = query_fw_daemon("GET", "/rules")
+    except Exception:
+        fw_rules = {"mode": "unknown", "rules": []}
 
     # Fetch raw iptables -S FORWARD lines
-    raw_res = exec_container("lab_firewall", ["iptables", "-S", "FORWARD"], timeout=5)
-    raw_lines = [l.strip() for l in raw_res.stdout.splitlines() if l.strip()]
+    try:
+        raw_res = exec_container("lab_firewall", ["iptables", "-S", "FORWARD"], timeout=5)
+        raw_lines = [l.strip() for l in raw_res.stdout.splitlines() if l.strip()]
+    except Exception:
+        raw_lines = []
 
-    return {
+    result = {
         "mode": fw_rules.get("mode", "unknown"),
         "rules": fw_rules.get("rules", []),
         "raw_rules": raw_lines
     }
+    _RULES_CACHE["data"] = result
+    _RULES_CACHE["ts"] = now
+    return result
 
 
 @app.post("/mode")
@@ -309,6 +335,8 @@ def set_mode(req: ModeRequest, request: Request):
             detail=f"Failed to apply mode {mode_upper}: {res.stderr.strip()}"
         )
 
+    _STATUS_CACHE["ts"] = 0
+    _RULES_CACHE["ts"] = 0
     return {
         "success": True,
         "mode": mode_upper,
